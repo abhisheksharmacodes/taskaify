@@ -359,6 +359,9 @@ export default function TaskDashboard() {
     setSavedTasks((prev: any[]) => prev.map(t => t.id === taskId ? { ...t, newSubtaskContent: '' } : t));
   };
 
+  // Add discard handler
+  const handleDiscardAll = () => setGeneratedTasks([]);
+
   return (
     <div className="w-full max-w-3xl mx-auto mt-8 space-y-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300 text-gray-900">
       {/* Progress Bar */}
@@ -421,15 +424,24 @@ export default function TaskDashboard() {
         <div>
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-semibold text-gray-900">Generated Tasks</h3>
-            <Button
-              variant="outline"
-              onClick={handleGenerate}
-              className="ml-1 cursor-pointer flex items-center gap-1"
-              aria-label="Regenerate Tasks"
-            >
-              <ReloadIcon className="w-4 h-4" />
-              Regenerate
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleGenerate}
+                className="ml-1 cursor-pointer flex items-center gap-1"
+                aria-label="Regenerate Tasks"
+              >
+                Regenerate
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDiscardAll}
+                className="ml-1 cursor-pointer flex items-center gap-1"
+                aria-label="Discard All Generated Tasks"
+              >
+                Discard All
+              </Button>
+            </div>
           </div>
           <ul className="space-y-2">
             {generatedTasks.map((task: string, i: number) => (
@@ -476,7 +488,7 @@ export default function TaskDashboard() {
                   return (
                     <Accordion type="multiple" key={task.id} className="space-y-2">
                       <AccordionItem value={String(task.id)} className="bg-gray-50 rounded-lg shadow-sm">
-                        <AccordionTrigger className="w-full px-4">
+                        <AccordionTrigger className="w-full px-4 no-underline hover:no-underline">
                           <div className="group flex items-center gap-2 w-full">
                             {editTaskId === task.id ? (
                               <>
@@ -573,7 +585,7 @@ export default function TaskDashboard() {
                 } else {
                   // No subtasks: render as normal list item with inline add subtask field
                   return (
-                    <li key={task.id} className="group bg-gray-50 rounded-lg p-2 shadow-sm transition-all duration-200 hover:shadow-md">
+                    <li key={task.id} className="group bg-gray-50 rounded-lg p-2 px-4 shadow-sm transition-all duration-200 hover:shadow-md">
                       <div className="flex items-center w-full">
                         <div className='flex-1 gap-2 flex items-center'>
                           <Checkbox
