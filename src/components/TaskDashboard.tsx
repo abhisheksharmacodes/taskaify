@@ -6,8 +6,10 @@ import { Input } from './ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { Alert, AlertDescription } from './ui/alert';
 import { Checkbox } from './ui/checkbox';
-import { Pencil1Icon, TrashIcon, CheckIcon, Cross2Icon, ReloadIcon } from '@radix-ui/react-icons';
+import { Pencil1Icon, TrashIcon, CheckIcon, Cross2Icon, ReloadIcon, PlusIcon, ChevronDownIcon } from '@radix-ui/react-icons';
 import { z } from 'zod';
+import TaskSubtasks from './TaskSubtasks';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 
 const taskSchema = z.object({
   content: z.string().min(1, 'Task cannot be empty').max(255, 'Task too long'),
@@ -316,8 +318,49 @@ export default function TaskDashboard() {
     ? savedTasks
     : savedTasks.flat ? savedTasks.flat() : savedTasks;
 
+  // Helper to fetch subtask counts for all tasks
+  const useSubtaskCounts = (tasks: any[], token: string): { [key: number]: number } => {
+    const [counts, setCounts] = useState<{ [key: number]: number }>({});
+    useEffect(() => {
+      if (!token || !tasks.length) return;
+      (async () => {
+        const newCounts: { [key: number]: number } = {};
+        await Promise.all(tasks.map(async (task: any) => {
+          const res = await fetch(`/api/tasks/${task.id}/subtasks`, { headers: { Authorization: `Bearer ${token}` } });
+          if (res.ok) {
+            const subtasks = await res.json();
+            newCounts[task.id] = subtasks.length;
+          } else {
+            newCounts[task.id] = 0;
+          }
+        }));
+        setCounts(newCounts);
+      })();
+    }, [tasks, token]);
+    return counts;
+  };
+
+  // Inline handler for adding a subtask
+  const handleAddSubtask = async (
+    taskId: number,
+    token: string,
+    content: string,
+    setSavedTasks: React.Dispatch<React.SetStateAction<any[]>>
+  ) => {
+    if (!content.trim()) return;
+    await fetch(`/api/tasks/${taskId}/subtasks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ content }),
+    });
+    setSavedTasks((prev: any[]) => prev.map(t => t.id === taskId ? { ...t, newSubtaskContent: '' } : t));
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto mt-8 space-y-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300 text-gray-900">
+    <div className="w-full max-w-3xl mx-auto mt-8 space-y-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300 text-gray-900">
       {/* Progress Bar */}
       <div>
         <div className="flex justify-between mb-1">
@@ -423,92 +466,177 @@ export default function TaskDashboard() {
       {/* Saved tasks */}
       <div>
         <h3 className="font-semibold mb-2 text-gray-900">Your Tasks</h3>
-        <ul className="space-y-2">
-          {flatSavedTasks.map((task: any) => (
-            <li key={task.id} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 shadow-sm transition-all duration-200 hover:shadow-md">
-              {editTaskId === task.id ? (
-                <>
-                  <Input
-                    className="flex-1 mr-2"
-                    value={editTaskContent}
-                    onChange={e => setEditTaskContent(e.target.value)}
-                  />
-                  <Input
-                    className="w-32 mr-2"
-                    value={editTaskCategory}
-                    onChange={e => setEditTaskCategory(e.target.value)}
-                    list="category-list"
-                    placeholder="Category"
-                  />
-                  <input
-                    type="date"
-                    className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer"
-                    value={editTaskDueDate}
-                    onChange={e => setEditTaskDueDate(e.target.value)}
-                    placeholder="Due date"
-                    min={todayStr}
-                  />
-                  <Button
-                    onClick={() => handleSaveEditTask(task)}
-                    className="mr-1 p-2 cursor-pointer"
-                    disabled={savedTaskLoading[task.id] === 'edit' || !editTaskContent.trim()}
-                    variant="ghost"
-                    aria-label="Save Task"
-                  >
-                    {savedTaskLoading[task.id] === 'edit' ? (
-                      <span className="text-xs">...</span>
-                    ) : (
-                      <CheckIcon className="w-4 h-4 text-green-600 cursor-pointer" />
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleCancelEditTask}
-                    className="p-2 cursor-pointer"
-                    disabled={savedTaskLoading[task.id] === 'edit'}
-                    variant="ghost"
-                    aria-label="Cancel Edit"
-                  >
-                    <Cross2Icon className="w-4 h-4 text-gray-500 cursor-pointer" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Checkbox
-                    checked={task.completed}
-                    onCheckedChange={() => handleToggleComplete(task)}
-                    disabled={savedTaskLoading[task.id] === 'toggle'}
-                    className="mr-2 cursor-pointer"
-                  />
-                  <span className={task.completed ? 'line-through text-gray-400 flex-1' : 'flex-1 text-gray-900'}>{task.content}</span>
-                  {task.category && <span className="ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">{task.category}</span>}
-                  {task.dueDate && <span className="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs">{task.dueDate.slice(0, 10)}</span>}
-                  <Button
-                    onClick={() => handleStartEditTask(task)}
-                    className="ml-1 p-2 cursor-pointer"
-                    disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
-                    variant="ghost"
-                    aria-label="Edit Task"
-                  >
-                    <Pencil1Icon className="w-4 h-4 cursor-pointer" />
-                  </Button>
-                  <Button
-                    onClick={() => handleDeleteTask(task.id)}
-                    className="ml-1 p-2 cursor-pointer"
-                    disabled={savedTaskLoading[task.id] === 'delete'}
-                    variant="ghost"
-                    aria-label="Delete Task"
-                  >
-                    {savedTaskLoading[task.id] === 'delete' ? (
-                      <span className="text-xs">...</span>
-                    ) : (
-                      <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
-                    )}
-                  </Button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+        {(() => {
+          const counts = useSubtaskCounts(flatSavedTasks, token ?? '');
+          return (
+            <ul className="space-y-2">
+              {flatSavedTasks.map((task: any) => {
+                const hasSubtasks = counts[task.id] > 0;
+                if (hasSubtasks) {
+                  return (
+                    <Accordion type="multiple" key={task.id} className="space-y-2">
+                      <AccordionItem value={String(task.id)} className="bg-gray-50 rounded-lg shadow-sm">
+                        <AccordionTrigger className="w-full px-4">
+                          <div className="group flex items-center gap-2 w-full">
+                            {editTaskId === task.id ? (
+                              <>
+                                <Input
+                                  className="flex-1 mr-2"
+                                  value={editTaskContent}
+                                  onChange={e => setEditTaskContent(e.target.value)}
+                                />
+                                <Input
+                                  className="w-32 mr-2"
+                                  value={editTaskCategory}
+                                  onChange={e => setEditTaskCategory(e.target.value)}
+                                  list="category-list"
+                                  placeholder="Category"
+                                />
+                                <input
+                                  type="date"
+                                  className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer"
+                                  value={editTaskDueDate}
+                                  onChange={e => setEditTaskDueDate(e.target.value)}
+                                  placeholder="Due date"
+                                  min={todayStr}
+                                />
+                                <Button
+                                  onClick={() => handleSaveEditTask(task)}
+                                  className="mr-1 p-2 cursor-pointer"
+                                  disabled={savedTaskLoading[task.id] === 'edit' || !editTaskContent.trim()}
+                                  variant="ghost"
+                                  aria-label="Save Task"
+                                >
+                                  {savedTaskLoading[task.id] === 'edit' ? (
+                                    <span className="text-xs">...</span>
+                                  ) : (
+                                    <CheckIcon className="w-4 h-4 text-green-600 cursor-pointer" />
+                                  )}
+                                </Button>
+                                <Button
+                                  onClick={handleCancelEditTask}
+                                  className="p-2 cursor-pointer"
+                                  disabled={savedTaskLoading[task.id] === 'edit'}
+                                  variant="ghost"
+                                  aria-label="Cancel Edit"
+                                >
+                                  <Cross2Icon className="w-4 h-4 text-gray-500 cursor-pointer" />
+                                </Button>
+                              </>
+                            ) : (
+                              <div className='flex w-full'>
+                                <div className='flex flex-1 gap-2 items-center'>
+                                  <Checkbox
+                                    checked={task.completed}
+                                    onCheckedChange={() => handleToggleComplete(task)}
+                                    disabled={savedTaskLoading[task.id] === 'toggle'}
+                                    className="mr-2 cursor-pointer self-center"
+                                  />
+                                  <span className={task.completed ? 'self-center line-through text-gray-400' : 'self-center text-gray-900'}>{task.content}</span>
+                                  <Button
+                                    onClick={() => handleStartEditTask(task)}
+                                    className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                    disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
+                                    variant="ghost"
+                                    aria-label="Edit Task"
+                                  >
+                                    <Pencil1Icon className="w-4 h-4 cursor-pointer" />
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleDeleteTask(task.id)}
+                                    className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                    disabled={savedTaskLoading[task.id] === 'delete'}
+                                    variant="ghost"
+                                    aria-label="Delete Task"
+                                  >
+                                    {savedTaskLoading[task.id] === 'delete' ? (
+                                      <span className="text-xs">...</span>
+                                    ) : (
+                                      <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
+                                    )}
+                                  </Button>
+                                </div>
+                                {task.category && <span className={`ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
+                                {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+                              </div>
+                            )}
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-4 pb-2">
+                          {task.id && token && (
+                            <TaskSubtasks taskId={task.id} token={token} />
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  );
+                } else {
+                  // No subtasks: render as normal list item with inline add subtask field
+                  return (
+                    <li key={task.id} className="group bg-gray-50 rounded-lg p-2 shadow-sm transition-all duration-200 hover:shadow-md">
+                      <div className="flex items-center w-full">
+                        <div className='flex-1 gap-2 flex items-center'>
+                          <Checkbox
+                            checked={task.completed}
+                            onCheckedChange={() => handleToggleComplete(task)}
+                            disabled={savedTaskLoading[task.id] === 'toggle'}
+                            className="mr-2 cursor-pointer self-center"
+                          />
+                          <span className={task.completed ? 'line-through self-center text-gray-400' : 'self-center text-gray-900'}>{task.content}</span>
+                          <Button
+                            onClick={() => handleStartEditTask(task)}
+                            className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
+                            variant="ghost"
+                            aria-label="Edit Task"
+                          >
+                            <Pencil1Icon className="w-4 h-4 cursor-pointer" />
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={savedTaskLoading[task.id] === 'delete'}
+                            variant="ghost"
+                            aria-label="Delete Task"
+                          >
+                            {savedTaskLoading[task.id] === 'delete' ? (
+                              <span className="text-xs">...</span>
+                            ) : (
+                              <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
+                            )}
+                          </Button>
+                        </div>
+                        {task.category && <span className="ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center">{task.category}</span>}
+                        {task.dueDate && <span className="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+                        <div className="flex items-center gap-1 ml-2">
+                          <Input
+                            value={task.newSubtaskContent || ''}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setSavedTasks((prev: any[]) => prev.map(t => t.id === task.id ? { ...t, newSubtaskContent: val } : t));
+                            }}
+                            placeholder="Add subtask"
+                            className="w-32"
+                            onKeyDown={e => { if (e.key === 'Enter') task.id && token && handleAddSubtask(task.id, token, task.newSubtaskContent, setSavedTasks); }}
+                          />
+                          <Button
+                            onClick={() => task.id && token && handleAddSubtask(task.id, token, task.newSubtaskContent, setSavedTasks)}
+                            disabled={!task.newSubtaskContent || !task.newSubtaskContent.trim()}
+                            className="p-2 cursor-pointer"
+                            variant="ghost"
+                            aria-label="Add Subtask"
+                          >
+                            <PlusIcon className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                }
+              })}
+            </ul>
+          );
+        })()}
       </div>
     </div>
   );
