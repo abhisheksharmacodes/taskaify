@@ -6,7 +6,7 @@ import { Input } from './ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { Alert, AlertDescription } from './ui/alert';
 import { Checkbox } from './ui/checkbox';
-import { Pencil1Icon, TrashIcon, CheckIcon, Cross2Icon } from '@radix-ui/react-icons';
+import { Pencil1Icon, TrashIcon, CheckIcon, Cross2Icon, ReloadIcon } from '@radix-ui/react-icons';
 
 export default function TaskDashboard() {
   const { token } = useAuth();
@@ -323,6 +323,7 @@ export default function TaskDashboard() {
         <Button
           onClick={handleGenerate}
           disabled={!topic || generateLoading}
+          className='cursor-pointer'
         >
           {generateLoading ? 'Generating...' : 'Generate Tasks'}
         </Button>
@@ -342,14 +343,13 @@ export default function TaskDashboard() {
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-semibold text-gray-900">Generated Tasks</h3>
             <Button
-              variant="destructive"
-              onClick={() => {
-                setGeneratedTasks([]);
-                setGeneratedTaskCategories({});
-              }}
-              className="ml-1"
+              variant="outline"
+              onClick={handleGenerate}
+              className="ml-1 cursor-pointer flex items-center gap-1"
+              aria-label="Regenerate Tasks"
             >
-              Discard All
+              <ReloadIcon className="w-4 h-4" />
+              Regenerate
             </Button>
           </div>
           <ul className="space-y-2">
@@ -371,7 +371,7 @@ export default function TaskDashboard() {
                 <Button
                   onClick={() => handleSaveTask(task, i)}
                   disabled={!!generatedTaskLoading[i]}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 cursor-pointer hover:bg-green-700"
                 >
                   {generatedTaskLoading[i] ? 'Saving...' : 'Save'}
                 </Button>
@@ -403,7 +403,7 @@ export default function TaskDashboard() {
                   />
                   <Button
                     onClick={() => handleSaveEditTask(task)}
-                    className="mr-1 p-2"
+                    className="mr-1 p-2 cursor-pointer"
                     disabled={savedTaskLoading[task.id] === 'edit' || !editTaskContent.trim()}
                     variant="ghost"
                     aria-label="Save Task"
@@ -411,17 +411,17 @@ export default function TaskDashboard() {
                     {savedTaskLoading[task.id] === 'edit' ? (
                       <span className="text-xs">...</span>
                     ) : (
-                      <CheckIcon className="w-4 h-4 text-green-600" />
+                      <CheckIcon className="w-4 h-4 text-green-600 cursor-pointer" />
                     )}
                   </Button>
                   <Button
                     onClick={handleCancelEditTask}
-                    className="p-2"
+                    className="p-2 cursor-pointer"
                     disabled={savedTaskLoading[task.id] === 'edit'}
                     variant="ghost"
                     aria-label="Cancel Edit"
                   >
-                    <Cross2Icon className="w-4 h-4 text-gray-500" />
+                    <Cross2Icon className="w-4 h-4 text-gray-500 cursor-pointer" />
                   </Button>
                 </>
               ) : (
@@ -436,16 +436,16 @@ export default function TaskDashboard() {
                   {task.category && <span className="ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">{task.category}</span>}
                   <Button
                     onClick={() => handleStartEditTask(task)}
-                    className="ml-1 p-2"
+                    className="ml-1 p-2 cursor-pointer"
                     disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
                     variant="ghost"
                     aria-label="Edit Task"
                   >
-                    <Pencil1Icon className="w-4 h-4" />
+                    <Pencil1Icon className="w-4 h-4 cursor-pointer" />
                   </Button>
                   <Button
                     onClick={() => handleDeleteTask(task.id)}
-                    className="ml-1 p-2"
+                    className="ml-1 p-2 cursor-pointer"
                     disabled={savedTaskLoading[task.id] === 'delete'}
                     variant="ghost"
                     aria-label="Delete Task"
@@ -453,7 +453,7 @@ export default function TaskDashboard() {
                     {savedTaskLoading[task.id] === 'delete' ? (
                       <span className="text-xs">...</span>
                     ) : (
-                      <TrashIcon className="w-4 h-4 text-red-500" />
+                      <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
                     )}
                   </Button>
                 </>

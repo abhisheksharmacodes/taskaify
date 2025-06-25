@@ -4,6 +4,7 @@ import SignOutButton from '../../components/SignOutButton';
 import TaskDashboard from '../../components/TaskDashboard';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { ReloadIcon } from '@radix-ui/react-icons';
 
 function DashboardContent() {
   const { user, loading } = useAuth();
@@ -15,7 +16,23 @@ function DashboardContent() {
     }
   }, [user, loading, router]);
 
-  if (loading) return <div className="text-center mt-8">Loading...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="max-w-3xl w-full mx-auto p-6 bg-white rounded-xl shadow-lg">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-2/3 mx-auto mb-8" />
+          <div className="h-6 bg-gray-200 rounded w-1/3 mx-auto mb-6" />
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded w-full" />
+            <div className="h-4 bg-gray-200 rounded w-5/6" />
+            <div className="h-4 bg-gray-200 rounded w-4/6" />
+            <div className="h-4 bg-gray-200 rounded w-3/6" />
+            <div className="h-4 bg-gray-200 rounded w-2/6" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
   if (!user) return null;
 
   return (

@@ -12,7 +12,7 @@ export default function SignOutButton() {
     router.push('/signin');
   };
   return (
-    <Button onClick={handleSignOut} variant="outline">
+    <Button onClick={handleSignOut} className='cursor-pointer' variant="outline">
       Sign Out
     </Button>
   );

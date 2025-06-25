@@ -54,7 +54,7 @@ export default function SignUpForm() {
           <AlertDescription>{snackbar?.message || ''}</AlertDescription>
         </Alert>
       )}
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
         {loading ? 'Signing up...' : 'Sign Up'}
       </Button>
     </form>
