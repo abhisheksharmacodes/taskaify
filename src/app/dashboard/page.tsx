@@ -19,10 +19,12 @@ function DashboardContent() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center">
-      <h1 className="text-2xl font-bold mb-4">Welcome, {user.email}</h1>
-      <SignOutButton />
-      <TaskDashboard />
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-3xl mx-auto p-6 flex items-center flex-col bg-white rounded-xl shadow-lg mt-8">
+        <h1 className="text-3xl font-bold text-center mb-4">Welcome, {user.email}</h1>
+        <SignOutButton />
+        <TaskDashboard />
+      </div>
     </div>
   );
 }
@@ -30,9 +32,7 @@ function DashboardContent() {
 export default function DashboardPage() {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-white text-gray-900">
-        <DashboardContent />
-      </div>
+      <DashboardContent />
     </AuthProvider>
   );
 } 

@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useRouter } from 'next/navigation';
-import Snackbar, { SnackbarType } from './Snackbar';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Alert, AlertDescription } from './ui/alert';
 
 export default function SignUpForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [snackbar, setSnackbar] = useState<{ message: string; type: SnackbarType } | null>(null);
+  const [snackbar, setSnackbar] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -33,35 +35,28 @@ export default function SignUpForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto mt-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300">
       <h2 className="text-2xl font-bold mb-4 text-gray-900">Sign Up</h2>
-      <input
+      <Input
         type="email"
-        className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200 bg-gray-50 text-gray-900"
         placeholder="Email"
         value={email}
         onChange={e => setEmail(e.target.value)}
         required
       />
-      <input
+      <Input
         type="password"
-        className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400 transition-all duration-200 bg-gray-50 text-gray-900"
         placeholder="Password"
         value={password}
         onChange={e => setPassword(e.target.value)}
         required
       />
-      <Snackbar
-        message={snackbar?.message || ''}
-        type={snackbar?.type || 'success'}
-        isVisible={snackbarVisible}
-        onClose={() => setSnackbarVisible(false)}
-      />
-      <button
-        type="submit"
-        className="w-full bg-green-600 text-white py-2 rounded shadow-md hover:bg-green-700 hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50"
-        disabled={loading}
-      >
+      {snackbarVisible && (
+        <Alert variant={snackbar?.type === 'error' ? 'destructive' : 'default'}>
+          <AlertDescription>{snackbar?.message || ''}</AlertDescription>
+        </Alert>
+      )}
+      <Button type="submit" className="w-full" disabled={loading}>
         {loading ? 'Signing up...' : 'Sign Up'}
-      </button>
+      </Button>
     </form>
   );
 } 

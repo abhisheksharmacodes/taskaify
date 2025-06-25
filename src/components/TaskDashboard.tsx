@@ -1,7 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthProvider';
-import Snackbar, { SnackbarType } from './Snackbar';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { Alert, AlertDescription } from './ui/alert';
+import { Checkbox } from './ui/checkbox';
+import { Pencil1Icon, TrashIcon, CheckIcon, Cross2Icon } from '@radix-ui/react-icons';
 
 export default function TaskDashboard() {
   const { token } = useAuth();
@@ -16,7 +21,7 @@ export default function TaskDashboard() {
   const [generateLoading, setGenerateLoading] = useState(false);
   const [generatedTaskLoading, setGeneratedTaskLoading] = useState<{ [key: number]: boolean }>({});
   const [savedTaskLoading, setSavedTaskLoading] = useState<{ [key: number]: string | null }>({});
-  const [snackbar, setSnackbar] = useState<{ message: string; type: SnackbarType } | null>(null);
+  const [snackbar, setSnackbar] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   // Edit state
   const [editTaskId, setEditTaskId] = useState<number | null>(null);
@@ -90,6 +95,13 @@ export default function TaskDashboard() {
     fetchTasksAndProgress();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, selectedCategory]);
+
+  useEffect(() => {
+    if (snackbarVisible) {
+      const timer = setTimeout(() => setSnackbarVisible(false), 3000); // 3 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [snackbarVisible]);
 
   // Generate tasks using Gemini
   const handleGenerate = async () => {
@@ -193,8 +205,6 @@ export default function TaskDashboard() {
         body: JSON.stringify({ completed: !task.completed }),
       });
       fetchTasksAndProgress();
-      setSnackbar({ message: task.completed ? 'Marked as incomplete!' : 'Marked as complete!', type: 'success' });
-      setSnackbarVisible(true);
     } catch (e: any) {
       setSnackbar({ message: e.message, type: 'error' });
       setSnackbarVisible(true);
@@ -250,8 +260,6 @@ export default function TaskDashboard() {
       setEditTaskCategory('');
       fetchTasksAndProgress();
       fetchCategories();
-      setSnackbar({ message: 'Task updated!', type: 'success' });
-      setSnackbarVisible(true);
     } catch (e: any) {
       setSnackbar({ message: e.message, type: 'error' });
       setSnackbarVisible(true);
@@ -291,65 +299,65 @@ export default function TaskDashboard() {
       {/* Category filter dropdown */}
       <div className="flex gap-2 items-center">
         <label htmlFor="category-filter" className="text-gray-800 text-sm">Filter by Category:</label>
-        <select
-          id="category-filter"
-          className="border rounded px-2 py-1 bg-gray-50 text-gray-900"
-          value={selectedCategory}
-          onChange={e => setSelectedCategory(e.target.value)}
-        >
-          <option value="">All</option>
-          {categories.map((cat, i) => (
-            <option key={i} value={cat}>{cat}</option>
-          ))}
-        </select>
+        <Select value={selectedCategory || 'all'} onValueChange={v => setSelectedCategory(v === 'all' ? '' : v)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            {categories.map((cat, i) => (
+              <SelectItem key={i} value={cat}>{cat}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Topic and category input and generate button */}
       <div className="flex gap-2">
-        <input
-          type="text"
-          className="flex-1 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-200 bg-gray-50 text-gray-900"
+        <Input
+          className="flex-1"
           placeholder="Enter a topic (e.g. Learn Python)"
           value={topic}
           onChange={e => setTopic(e.target.value)}
         />
-        <button
+        <Button
           onClick={handleGenerate}
-          className="bg-blue-600 text-white px-4 py-2 rounded shadow-md hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50"
           disabled={!topic || generateLoading}
         >
           {generateLoading ? 'Generating...' : 'Generate Tasks'}
-        </button>
+        </Button>
       </div>
-      <Snackbar
-        message={snackbar?.message || ''}
-        type={snackbar?.type || 'success'}
-        isVisible={snackbarVisible}
-        onClose={() => setSnackbarVisible(false)}
-      />
+      {snackbarVisible && (
+        <Alert
+          variant={snackbar?.type === 'error' ? 'destructive' : 'default'}
+          className="fixed bottom-4 left-4 z-[9999] max-w-sm w-full px-4"
+        >
+          <AlertDescription>{snackbar?.message || ''}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Generated tasks */}
       {generatedTasks.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-semibold text-gray-900">Generated Tasks</h3>
-            <button
+            <Button
+              variant="destructive"
               onClick={() => {
                 setGeneratedTasks([]);
                 setGeneratedTaskCategories({});
               }}
-              className="bg-red-500 text-white px-2 py-1 rounded shadow hover:bg-red-600 transition-all duration-200 ml-1 disabled:opacity-50"
+              className="ml-1"
             >
               Discard All
-            </button>
+            </Button>
           </div>
           <ul className="space-y-2">
             {generatedTasks.map((task: string, i: number) => (
               <li key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 shadow-sm transition-all duration-200 hover:shadow-md">
                 <span className="flex-1 text-gray-900">{task}</span>
-                <input
-                  type="text"
-                  className="w-32 border rounded px-2 py-1 mr-2"
+                <Input
+                  className="w-32 mr-2"
                   value={generatedTaskCategories[i] || ''}
                   onChange={e => setGeneratedTaskCategories(prev => ({ ...prev, [i]: e.target.value }))}
                   list={`generated-category-list-${i}`}
@@ -360,13 +368,13 @@ export default function TaskDashboard() {
                     <option key={idx} value={cat} />
                   ))}
                 </datalist>
-                <button
+                <Button
                   onClick={() => handleSaveTask(task, i)}
-                  className="bg-green-600 text-white px-2 py-1 rounded shadow hover:bg-green-700 hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-50"
                   disabled={!!generatedTaskLoading[i]}
+                  className="bg-green-600 hover:bg-green-700"
                 >
                   {generatedTaskLoading[i] ? 'Saving...' : 'Save'}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -381,68 +389,73 @@ export default function TaskDashboard() {
             <li key={task.id} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 shadow-sm transition-all duration-200 hover:shadow-md">
               {editTaskId === task.id ? (
                 <>
-                  <input
-                    type="text"
-                    className="flex-1 border rounded px-2 py-1 mr-2"
+                  <Input
+                    className="flex-1 mr-2"
                     value={editTaskContent}
                     onChange={e => setEditTaskContent(e.target.value)}
                   />
-                  <input
-                    type="text"
-                    className="w-32 border rounded px-2 py-1 mr-2"
+                  <Input
+                    className="w-32 mr-2"
                     value={editTaskCategory}
                     onChange={e => setEditTaskCategory(e.target.value)}
                     list="category-list"
                     placeholder="Category"
                   />
-                  <button
+                  <Button
                     onClick={() => handleSaveEditTask(task)}
-                    className="bg-blue-600 text-white px-2 py-1 rounded shadow hover:bg-blue-700 transition-all duration-200 mr-1 disabled:opacity-50"
+                    className="mr-1 p-2"
                     disabled={savedTaskLoading[task.id] === 'edit' || !editTaskContent.trim()}
+                    variant="ghost"
+                    aria-label="Save Task"
                   >
-                    {savedTaskLoading[task.id] === 'edit' ? 'Saving...' : 'Save'}
-                  </button>
-                  <button
+                    {savedTaskLoading[task.id] === 'edit' ? (
+                      <span className="text-xs">...</span>
+                    ) : (
+                      <CheckIcon className="w-4 h-4 text-green-600" />
+                    )}
+                  </Button>
+                  <Button
                     onClick={handleCancelEditTask}
-                    className="bg-gray-300 text-gray-800 px-2 py-1 rounded shadow hover:bg-gray-400 transition-all duration-200"
+                    className="p-2"
                     disabled={savedTaskLoading[task.id] === 'edit'}
+                    variant="ghost"
+                    aria-label="Cancel Edit"
                   >
-                    Cancel
-                  </button>
+                    <Cross2Icon className="w-4 h-4 text-gray-500" />
+                  </Button>
                 </>
               ) : (
                 <>
+                  <Checkbox
+                    checked={task.completed}
+                    onCheckedChange={() => handleToggleComplete(task)}
+                    disabled={savedTaskLoading[task.id] === 'toggle'}
+                    className="mr-2"
+                  />
                   <span className={task.completed ? 'line-through text-gray-400 flex-1' : 'flex-1 text-gray-900'}>{task.content}</span>
                   {task.category && <span className="ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">{task.category}</span>}
-                  {task.completed && <span className="text-xs text-green-600 ml-2">Done</span>}
-                  <button
-                    onClick={() => handleToggleComplete(task)}
-                    className={
-                      (task.completed
-                        ? 'bg-yellow-500 text-white px-2 py-1 rounded shadow hover:bg-yellow-600 hover:scale-105 active:scale-95 transition-all duration-200'
-                        : 'bg-green-600 text-white px-2 py-1 rounded shadow hover:bg-green-700 hover:scale-105 active:scale-95 transition-all duration-200') +
-                      ' disabled:opacity-50'
-                    }
-                    disabled={savedTaskLoading[task.id] === 'toggle'}
-                  >
-                    {savedTaskLoading[task.id] === 'toggle'
-                      ? (task.completed ? 'Marking...' : 'Marking...')
-                      : (task.completed ? 'Mark Incomplete' : 'Mark Complete')}
-                  </button>
-                  <button
+                  <Button
                     onClick={() => handleStartEditTask(task)}
-                    className="bg-blue-500 text-white px-2 py-1 rounded shadow hover:bg-blue-600 transition-all duration-200 ml-1 disabled:opacity-50"
+                    className="ml-1 p-2"
                     disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
+                    variant="ghost"
+                    aria-label="Edit Task"
                   >
-                    Edit
-                  </button>
-                  <button
+                    <Pencil1Icon className="w-4 h-4" />
+                  </Button>
+                  <Button
                     onClick={() => handleDeleteTask(task.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded shadow hover:bg-red-600 transition-all duration-200 ml-1 disabled:opacity-50"
+                    className="ml-1 p-2"
                     disabled={savedTaskLoading[task.id] === 'delete'}
+                    variant="ghost"
+                    aria-label="Delete Task"
                   >
-                    {savedTaskLoading[task.id] === 'delete' ? 'Deleting...' : 'Delete'}
-                  </button>
+                    {savedTaskLoading[task.id] === 'delete' ? (
+                      <span className="text-xs">...</span>
+                    ) : (
+                      <TrashIcon className="w-4 h-4 text-red-500" />
+                    )}
+                  </Button>
                 </>
               )}
             </li>
