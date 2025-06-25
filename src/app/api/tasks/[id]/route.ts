@@ -5,6 +5,14 @@ import { db } from '@/db';
 import { tasks, users } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { verifyFirebaseToken } from '../../_utils/verifyFirebaseToken';
+import { z } from 'zod';
+
+const updateTaskSchema = z.object({
+  content: z.string().min(1).max(255).optional(),
+  category: z.string().max(50).optional(),
+  completed: z.boolean().optional(),
+  dueDate: z.string().datetime().optional().nullable(),
+});
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const authHeader = req.headers.get('authorization');
@@ -51,11 +59,21 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const user = userRows[0];
 
   // Only update if task belongs to user
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+  }
+  const result = updateTaskSchema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json({ error: 'Invalid payload', details: result.error.errors }, { status: 400 });
+  }
   const updateData: any = {};
-  if (body.content !== undefined) updateData.content = body.content;
-  if (body.completed !== undefined) updateData.completed = body.completed;
-  if (body.category !== undefined) updateData.category = body.category;
+  if (result.data.content !== undefined) updateData.content = result.data.content;
+  if (result.data.completed !== undefined) updateData.completed = result.data.completed;
+  if (result.data.category !== undefined) updateData.category = result.data.category;
+  if (result.data.dueDate !== undefined) updateData.dueDate = result.data.dueDate ? new Date(result.data.dueDate) : null;
   updateData.updatedAt = new Date();
 
   const updated = await db.update(tasks)

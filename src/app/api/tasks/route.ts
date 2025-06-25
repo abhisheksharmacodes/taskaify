@@ -5,6 +5,13 @@ import { db } from '@/db';
 import { tasks, users } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { verifyFirebaseToken } from '../_utils/verifyFirebaseToken';
+import { z } from 'zod';
+
+const taskSchema = z.object({
+  content: z.string().min(1).max(255),
+  category: z.string().max(50).optional(),
+  dueDate: z.string().datetime().optional().nullable(),
+});
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -78,15 +85,16 @@ export async function POST(req: NextRequest) {
     } catch {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
-    if (!body.content) {
-      return NextResponse.json({ error: 'Missing task content' }, { status: 400 });
+    const result = taskSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json({ error: 'Invalid payload', details: result.error.errors }, { status: 400 });
     }
-
     const newTask = await db.insert(tasks).values({
       userId: user.id,
-      content: body.content,
+      content: result.data.content,
       completed: false,
-      category: body.category || null,
+      category: result.data.category || null,
+      dueDate: result.data.dueDate ? new Date(result.data.dueDate) : null,
     }).returning();
 
     return NextResponse.json(newTask[0], { status: 201 });

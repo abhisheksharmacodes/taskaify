@@ -13,6 +13,16 @@ export const tasks = pgTable("tasks", {
   content: text("content").notNull(),
   completed: boolean("completed").notNull().default(false),
   category: text("category"),
+  dueDate: timestamp("due_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const subtasks = pgTable("subtasks", {
+  id: serial("id").primaryKey(),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  content: text("content").notNull(),
+  completed: boolean("completed").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }); 

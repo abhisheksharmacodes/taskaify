@@ -7,10 +7,21 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { Alert, AlertDescription } from './ui/alert';
 import { Checkbox } from './ui/checkbox';
 import { Pencil1Icon, TrashIcon, CheckIcon, Cross2Icon, ReloadIcon } from '@radix-ui/react-icons';
+import { z } from 'zod';
+
+const taskSchema = z.object({
+  content: z.string().min(1, 'Task cannot be empty').max(255, 'Task too long'),
+  category: z.string().max(50, 'Category too long').optional(),
+});
+const updateTaskSchema = z.object({
+  content: z.string().min(1, 'Task cannot be empty').max(255, 'Task too long').optional(),
+  category: z.string().max(50, 'Category too long').optional(),
+  completed: z.boolean().optional(),
+});
 
 export default function TaskDashboard() {
   const { token } = useAuth();
-  const [topic, setTopic] = useState('learn js');
+  const [topic, setTopic] = useState('');
   const [category, setCategory] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -29,6 +40,12 @@ export default function TaskDashboard() {
   const [editTaskCategory, setEditTaskCategory] = useState('');
   // State for per-generated-task category
   const [generatedTaskCategories, setGeneratedTaskCategories] = useState<{ [key: number]: string }>({});
+  const [generatedTaskDueDates, setGeneratedTaskDueDates] = useState<{ [key: number]: string }>({});
+  // Edit state
+  const [editTaskDueDate, setEditTaskDueDate] = useState('');
+
+  // Helper to get today's date in yyyy-mm-dd format
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   // Fetch categories
   const fetchCategories = () => {
@@ -153,8 +170,15 @@ export default function TaskDashboard() {
   // Save a generated task
   const handleSaveTask = async (content: string, index: number) => {
     if (!token) return;
-    setGeneratedTaskLoading(prev => ({ ...prev, [index]: true }));
     const taskCategory = generatedTaskCategories[index] || '';
+    const dueDate = generatedTaskDueDates[index] ? new Date(generatedTaskDueDates[index]).toISOString() : undefined;
+    const result = taskSchema.safeParse({ content, category: taskCategory });
+    if (!result.success) {
+      setSnackbar({ message: result.error.errors[0].message, type: 'error' });
+      setSnackbarVisible(true);
+      return;
+    }
+    setGeneratedTaskLoading(prev => ({ ...prev, [index]: true }));
     try {
       await fetch('/api/tasks', {
         method: 'POST',
@@ -162,21 +186,24 @@ export default function TaskDashboard() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content, category: taskCategory }),
+        body: JSON.stringify({ content, category: taskCategory, dueDate }),
       });
       setGeneratedTasks(prevTasks => {
         const newTasks = prevTasks.filter((_, i) => i !== index);
         // Rebuild categories to match new indices
         const newCategories: { [key: number]: string } = {};
+        const newDueDates: { [key: number]: string } = {};
         newTasks.forEach((_, newIdx) => {
           const oldIdx = newIdx < index ? newIdx : newIdx + 1;
           newCategories[newIdx] = generatedTaskCategories[oldIdx] || 'general';
+          newDueDates[newIdx] = generatedTaskDueDates[oldIdx] || '';
         });
         setGeneratedTaskCategories(newCategories);
+        setGeneratedTaskDueDates(newDueDates);
         return newTasks;
       });
-      fetchTasksAndProgress();
-      fetchCategories();
+      await fetchTasksAndProgress();
+      await fetchCategories();
       setSnackbar({ message: 'Task saved!', type: 'success' });
       setSnackbarVisible(true);
     } catch (e: any) {
@@ -240,11 +267,18 @@ export default function TaskDashboard() {
     setEditTaskId(task.id);
     setEditTaskContent(task.content);
     setEditTaskCategory(task.category || '');
+    setEditTaskDueDate(task.dueDate ? task.dueDate.slice(0, 10) : '');
   };
 
   // Save edited task
   const handleSaveEditTask = async (task: any) => {
     if (!token) return;
+    const result = updateTaskSchema.safeParse({ content: editTaskContent, category: editTaskCategory, dueDate: editTaskDueDate ? new Date(editTaskDueDate).toISOString() : undefined });
+    if (!result.success) {
+      setSnackbar({ message: result.error.errors[0].message, type: 'error' });
+      setSnackbarVisible(true);
+      return;
+    }
     setSavedTaskLoading(prev => ({ ...prev, [task.id]: 'edit' }));
     try {
       await fetch(`/api/tasks/${task.id}`, {
@@ -253,11 +287,12 @@ export default function TaskDashboard() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ content: editTaskContent, category: editTaskCategory }),
+        body: JSON.stringify({ content: editTaskContent, category: editTaskCategory, dueDate: editTaskDueDate ? new Date(editTaskDueDate).toISOString() : null }),
       });
       setEditTaskId(null);
       setEditTaskContent('');
       setEditTaskCategory('');
+      setEditTaskDueDate('');
       fetchTasksAndProgress();
       fetchCategories();
     } catch (e: any) {
@@ -273,6 +308,7 @@ export default function TaskDashboard() {
     setEditTaskId(null);
     setEditTaskContent('');
     setEditTaskCategory('');
+    setEditTaskDueDate('');
   };
 
   // Defensive flatten for savedTasks in case of nested arrays
@@ -363,11 +399,14 @@ export default function TaskDashboard() {
                   list={`generated-category-list-${i}`}
                   placeholder="Category"
                 />
-                <datalist id={`generated-category-list-${i}`}>
-                  {categories.map((cat, idx) => (
-                    <option key={idx} value={cat} />
-                  ))}
-                </datalist>
+                <input
+                  type="date"
+                  className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer"
+                  value={generatedTaskDueDates[i] || ''}
+                  onChange={e => setGeneratedTaskDueDates(prev => ({ ...prev, [i]: e.target.value }))}
+                  placeholder="Due date"
+                  min={todayStr}
+                />
                 <Button
                   onClick={() => handleSaveTask(task, i)}
                   disabled={!!generatedTaskLoading[i]}
@@ -401,6 +440,14 @@ export default function TaskDashboard() {
                     list="category-list"
                     placeholder="Category"
                   />
+                  <input
+                    type="date"
+                    className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer"
+                    value={editTaskDueDate}
+                    onChange={e => setEditTaskDueDate(e.target.value)}
+                    placeholder="Due date"
+                    min={todayStr}
+                  />
                   <Button
                     onClick={() => handleSaveEditTask(task)}
                     className="mr-1 p-2 cursor-pointer"
@@ -430,10 +477,11 @@ export default function TaskDashboard() {
                     checked={task.completed}
                     onCheckedChange={() => handleToggleComplete(task)}
                     disabled={savedTaskLoading[task.id] === 'toggle'}
-                    className="mr-2"
+                    className="mr-2 cursor-pointer"
                   />
                   <span className={task.completed ? 'line-through text-gray-400 flex-1' : 'flex-1 text-gray-900'}>{task.content}</span>
                   {task.category && <span className="ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">{task.category}</span>}
+                  {task.dueDate && <span className="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs">{task.dueDate.slice(0, 10)}</span>}
                   <Button
                     onClick={() => handleStartEditTask(task)}
                     className="ml-1 p-2 cursor-pointer"
