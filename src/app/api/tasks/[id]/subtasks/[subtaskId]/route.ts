@@ -46,7 +46,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string, 
   if (!result.success) {
     return NextResponse.json({ error: 'Invalid payload', details: result.error.errors }, { status: 400 });
   }
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   if (result.data.content !== undefined) updateData.content = result.data.content;
   if (result.data.completed !== undefined) updateData.completed = result.data.completed;
   updateData.updatedAt = new Date();

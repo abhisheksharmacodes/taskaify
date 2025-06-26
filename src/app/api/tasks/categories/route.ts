@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('POST /api/tasks/categories called');
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
     return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
   const user = userRows[0];
 
   const { name } = await req.json();
+  console.log('Attempting to insert category:', name, 'for user:', user.id);
   if (!name || typeof name !== 'string' || name.length > 50) {
     return NextResponse.json({ error: 'Invalid category name' }, { status: 400 });
   }
@@ -53,7 +55,9 @@ export async function POST(req: NextRequest) {
   // Insert category if it doesn't exist
   try {
     await db.insert(categories).values({ userId: user.id, name });
-  } catch (e: any) {
+    console.log('Category inserted:', name);
+  } catch (e: unknown) {
+    console.log('Insert error:', e);
     // Ignore duplicate error
   }
   return NextResponse.json({ success: true });

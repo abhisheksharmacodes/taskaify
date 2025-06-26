@@ -17,7 +17,6 @@ interface TaskSubtasksProps {
 
 export default function TaskSubtasks({ taskId, token }: TaskSubtasksProps) {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
-  const [loading, setLoading] = useState(false);
   const [newContent, setNewContent] = useState('');
   const [editId, setEditId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -25,7 +24,6 @@ export default function TaskSubtasks({ taskId, token }: TaskSubtasksProps) {
   const [addLoading, setAddLoading] = useState(false);
 
   const fetchSubtasks = async () => {
-    setLoading(true);
     try {
       const res = await fetch(`/api/tasks/${taskId}/subtasks`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -33,8 +31,8 @@ export default function TaskSubtasks({ taskId, token }: TaskSubtasksProps) {
       if (res.ok) {
         setSubtasks(await res.json());
       }
-    } finally {
-      setLoading(false);
+    } catch (_e) {
+      console.error(_e);
     }
   };
 

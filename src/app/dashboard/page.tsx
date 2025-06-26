@@ -4,7 +4,6 @@ import SignOutButton from '../../components/SignOutButton';
 import TaskDashboard from '../../components/TaskDashboard';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ReloadIcon } from '@radix-ui/react-icons';
 
 function DashboardContent() {
   const { user, loading } = useAuth();

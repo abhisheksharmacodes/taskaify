@@ -2,9 +2,6 @@
 // Requires Firebase Auth (to be implemented)
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from '../_utils/verifyFirebaseToken';
-import { db } from '@/db';
-import { tasks, users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';

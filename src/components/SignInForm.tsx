@@ -24,8 +24,8 @@ export default function SignInForm() {
       setSnackbar({ message: 'Signed in successfully!', type: 'success' });
       setSnackbarVisible(true);
       setTimeout(() => router.push('/dashboard'), 800);
-    } catch (err: any) {
-      setSnackbar({ message: err.message, type: 'error' });
+    } catch (err: unknown) {
+      setSnackbar({ message: (err as Error).message, type: 'error' });
       setSnackbarVisible(true);
     } finally {
       setLoading(false);

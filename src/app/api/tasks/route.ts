@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Find user by Firebase UID, create if not exists
-  let userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
+  const userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
   let user = userRows[0];
   if (!user) {
     const inserted = await db.insert(users).values({
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Find user by Firebase UID
-    let userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
+    const userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
     let user = userRows[0];
     if (!user) {
       // Create user if not exists
