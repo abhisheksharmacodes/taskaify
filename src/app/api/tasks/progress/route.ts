@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
 
     // Log the decoded UID
     console.log('Decoded UID:', decoded.uid);
+    console.log('#############################################################################:', process.env.DATABASE_URL);
 
     // Log all users in the DB
     const allUsers = await db.select().from(users);

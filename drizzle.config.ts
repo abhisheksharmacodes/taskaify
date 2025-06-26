@@ -5,6 +5,11 @@ export default {
   out: "./drizzle",
   dialect: "postgresql", // <-- Add this line
   dbCredentials: {
-    connectionString: process.env.DATABASE_URL || "",
+    host: process.env.PGHOST || '',
+    port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
+    user: process.env.PGUSER || '',
+    password: process.env.PGPASSWORD || '',
+    database: process.env.PGDATABASE || '',
+    ssl: 'require',
   },
 } satisfies Config;

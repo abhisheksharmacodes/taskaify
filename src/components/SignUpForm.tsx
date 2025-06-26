@@ -29,6 +29,7 @@ export default function SignUpForm() {
   };
 
   const validatePassword = (pw: string) => {
+    
     if (pw.length < 6) return 'Password should be at least 6 characters.';
     if (!/[0-9]/.test(pw)) return 'Password should contain at least one number.';
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(pw)) return 'Password should contain at least one special character.';
