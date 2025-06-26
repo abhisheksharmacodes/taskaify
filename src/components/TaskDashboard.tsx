@@ -10,6 +10,7 @@ import { Pencil1Icon, TrashIcon, CheckIcon, Cross2Icon, ReloadIcon, PlusIcon, Ch
 import { z } from 'zod';
 import TaskSubtasks from './TaskSubtasks';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
 
 const taskSchema = z.object({
   content: z.string().min(1, 'Task cannot be empty').max(255, 'Task too long'),
@@ -45,6 +46,12 @@ export default function TaskDashboard() {
   const [generatedTaskDueDates, setGeneratedTaskDueDates] = useState<{ [key: number]: string }>({});
   // Edit state
   const [editTaskDueDate, setEditTaskDueDate] = useState('');
+  // Modal state for creating category
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [createCategoryLoading, setCreateCategoryLoading] = useState(false);
+  // Add this state near the other useState hooks
+  const [newSubtaskInputs, setNewSubtaskInputs] = useState<{ [taskId: number]: string }>({});
 
   // Helper to get today's date in yyyy-mm-dd format
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -266,6 +273,7 @@ export default function TaskDashboard() {
 
   // Start editing a task
   const handleStartEditTask = (task: any) => {
+    console.log('Editing task:', task);
     setEditTaskId(task.id);
     setEditTaskContent(task.content);
     setEditTaskCategory(task.category || '');
@@ -345,7 +353,7 @@ export default function TaskDashboard() {
     taskId: number,
     token: string,
     content: string,
-    setSavedTasks: React.Dispatch<React.SetStateAction<any[]>>
+    setNewSubtaskInputs: React.Dispatch<React.SetStateAction<{ [taskId: number]: string }>>
   ) => {
     if (!content.trim()) return;
     await fetch(`/api/tasks/${taskId}/subtasks`, {
@@ -356,11 +364,32 @@ export default function TaskDashboard() {
       },
       body: JSON.stringify({ content }),
     });
-    setSavedTasks((prev: any[]) => prev.map(t => t.id === taskId ? { ...t, newSubtaskContent: '' } : t));
+    setNewSubtaskInputs((prev) => ({ ...prev, [taskId]: '' }));
   };
 
   // Add discard handler
   const handleDiscardAll = () => setGeneratedTasks([]);
+
+  // Add new category handler
+  const handleCreateCategory = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    setCreateCategoryLoading(true);
+    try {
+      // Optionally, call an API to persist the category
+      // For now, just add to local state
+      setCategories(prev => Array.from(new Set([...prev, newCategoryName.trim()])));
+      setSnackbar({ message: 'Category created!', type: 'success' });
+      setSnackbarVisible(true);
+      setCreateCategoryOpen(false);
+      setNewCategoryName('');
+    } catch (err: any) {
+      setSnackbar({ message: err.message || 'Failed to create category', type: 'error' });
+      setSnackbarVisible(true);
+    } finally {
+      setCreateCategoryLoading(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-3xl mx-auto mt-8 space-y-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300 text-gray-900">
@@ -378,7 +407,7 @@ export default function TaskDashboard() {
         </div>
       </div>
 
-      {/* Category filter dropdown */}
+      {/* Category filter dropdown and create category button */}
       <div className="flex gap-2 items-center">
         <label htmlFor="category-filter" className="text-gray-800 text-sm">Filter by Category:</label>
         <Select value={selectedCategory || 'all'} onValueChange={v => setSelectedCategory(v === 'all' ? '' : v)}>
@@ -392,6 +421,41 @@ export default function TaskDashboard() {
             ))}
           </SelectContent>
         </Select>
+        <Dialog open={createCategoryOpen} onOpenChange={setCreateCategoryOpen}>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex items-center gap-1 px-2 py-1 text-xs"
+              aria-label="Create Category"
+            >
+              <PlusIcon className="w-4 h-4" /> Create Category
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Create New Category</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateCategory} className="flex flex-col gap-4 mt-2">
+              <Input
+                autoFocus
+                placeholder="Category name"
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                maxLength={50}
+                required
+              />
+              <DialogFooter className="flex gap-2 justify-end">
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">Cancel</Button>
+                </DialogClose>
+                <Button type="submit" disabled={createCategoryLoading || !newCategoryName.trim()}>
+                  {createCategoryLoading ? 'Saving...' : 'Save'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Topic and category input and generate button */}
@@ -434,9 +498,9 @@ export default function TaskDashboard() {
                 Regenerate
               </Button>
               <Button
-                variant="destructive"
+                variant="outline"
                 onClick={handleDiscardAll}
-                className="ml-1 cursor-pointer flex items-center gap-1"
+                className="ml-1 cursor-pointer flex items-center gap-1 border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 focus:ring-red-500"
                 aria-label="Discard All Generated Tasks"
               >
                 Discard All
@@ -447,13 +511,19 @@ export default function TaskDashboard() {
             {generatedTasks.map((task: string, i: number) => (
               <li key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 shadow-sm transition-all duration-200 hover:shadow-md">
                 <span className="flex-1 text-gray-900">{task}</span>
-                <Input
-                  className="w-32 mr-2"
+                <Select
                   value={generatedTaskCategories[i] || ''}
-                  onChange={e => setGeneratedTaskCategories(prev => ({ ...prev, [i]: e.target.value }))}
-                  list={`generated-category-list-${i}`}
-                  placeholder="Category"
-                />
+                  onValueChange={v => setGeneratedTaskCategories(prev => ({ ...prev, [i]: v }))}
+                >
+                  <SelectTrigger className="w-32 mr-2">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat, idx) => (
+                      <SelectItem key={idx} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <input
                   type="date"
                   className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer"
@@ -488,25 +558,32 @@ export default function TaskDashboard() {
                   return (
                     <Accordion type="multiple" key={task.id} className="space-y-2">
                       <AccordionItem value={String(task.id)} className="bg-gray-50 rounded-lg shadow-sm">
-                        <AccordionTrigger className="w-full px-4 no-underline hover:no-underline">
+                        <AccordionTrigger className="w-full px-4 no-underline hover:no-underline cursor-pointer">
                           <div className="group flex items-center gap-2 w-full">
                             {editTaskId === task.id ? (
                               <>
                                 <Input
-                                  className="flex-1 mr-2"
+                                  className="flex-1 mr-2 font-normal"
                                   value={editTaskContent}
                                   onChange={e => setEditTaskContent(e.target.value)}
+                                  key={`edit-input-${task.id}`}
                                 />
-                                <Input
-                                  className="w-32 mr-2"
-                                  value={editTaskCategory}
-                                  onChange={e => setEditTaskCategory(e.target.value)}
-                                  list="category-list"
-                                  placeholder="Category"
-                                />
+                                <Select
+                                  value={editTaskCategory || ''}
+                                  onValueChange={v => setEditTaskCategory(v)}
+                                >
+                                  <SelectTrigger className="w-32 mr-2 font-normal">
+                                    <SelectValue placeholder="Category" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {categories.map((cat, idx) => (
+                                      <SelectItem key={idx} value={cat}>{cat}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <input
                                   type="date"
-                                  className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer"
+                                  className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer font-normal"
                                   value={editTaskDueDate}
                                   onChange={e => setEditTaskDueDate(e.target.value)}
                                   placeholder="Due date"
@@ -532,7 +609,7 @@ export default function TaskDashboard() {
                                   variant="ghost"
                                   aria-label="Cancel Edit"
                                 >
-                                  <Cross2Icon className="w-4 h-4 text-gray-500 cursor-pointer" />
+                                  <Cross2Icon className="w-4 h-4 text-gray-500 cursor-pointer mr-2" />
                                 </Button>
                               </>
                             ) : (
@@ -544,7 +621,7 @@ export default function TaskDashboard() {
                                     disabled={savedTaskLoading[task.id] === 'toggle'}
                                     className="mr-2 cursor-pointer self-center"
                                   />
-                                  <span className={task.completed ? 'self-center line-through text-gray-400' : 'self-center text-gray-900'}>{task.content}</span>
+                                  <span className={task.completed ? 'self-center line-through text-gray-400 font-normal' : 'self-center text-gray-900 font-normal'}>{task.content}</span>
                                   <Button
                                     onClick={() => handleStartEditTask(task)}
                                     className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
@@ -588,59 +665,119 @@ export default function TaskDashboard() {
                     <li key={task.id} className="group bg-gray-50 rounded-lg p-2 px-4 shadow-sm transition-all duration-200 hover:shadow-md">
                       <div className="flex items-center w-full">
                         <div className='flex-1 gap-2 flex items-center'>
-                          <Checkbox
-                            checked={task.completed}
-                            onCheckedChange={() => handleToggleComplete(task)}
-                            disabled={savedTaskLoading[task.id] === 'toggle'}
-                            className="mr-2 cursor-pointer self-center"
-                          />
-                          <span className={task.completed ? 'line-through self-center text-gray-400' : 'self-center text-gray-900'}>{task.content}</span>
-                          <Button
-                            onClick={() => handleStartEditTask(task)}
-                            className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                            disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
-                            variant="ghost"
-                            aria-label="Edit Task"
-                          >
-                            <Pencil1Icon className="w-4 h-4 cursor-pointer" />
-                          </Button>
-                          <Button
-                            onClick={() => handleDeleteTask(task.id)}
-                            className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                            disabled={savedTaskLoading[task.id] === 'delete'}
-                            variant="ghost"
-                            aria-label="Delete Task"
-                          >
-                            {savedTaskLoading[task.id] === 'delete' ? (
-                              <span className="text-xs">...</span>
-                            ) : (
-                              <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
-                            )}
-                          </Button>
+                          {editTaskId === task.id ? (
+                            <>
+                              <Input
+                                className="flex-1 mr-2 font-normal"
+                                value={editTaskContent}
+                                onChange={e => setEditTaskContent(e.target.value)}
+                                key={`edit-input-${task.id}`}
+                              />
+                              <Select
+                                value={editTaskCategory || ''}
+                                onValueChange={v => setEditTaskCategory(v)}
+                              >
+                                <SelectTrigger className="w-32 mr-2 font-normal">
+                                  <SelectValue placeholder="Category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categories.map((cat, idx) => (
+                                    <SelectItem key={idx} value={cat}>{cat}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <input
+                                type="date"
+                                className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer font-normal"
+                                value={editTaskDueDate}
+                                onChange={e => setEditTaskDueDate(e.target.value)}
+                                placeholder="Due date"
+                                min={todayStr}
+                              />
+                              <Button
+                                onClick={() => handleSaveEditTask(task)}
+                                className="mr-1 p-2 cursor-pointer"
+                                disabled={savedTaskLoading[task.id] === 'edit' || !editTaskContent.trim()}
+                                variant="ghost"
+                                aria-label="Save Task"
+                              >
+                                {savedTaskLoading[task.id] === 'edit' ? (
+                                  <span className="text-xs">...</span>
+                                ) : (
+                                  <CheckIcon className="w-4 h-4 text-green-600 cursor-pointer" />
+                                )}
+                              </Button>
+                              <Button
+                                onClick={handleCancelEditTask}
+                                className="p-2 cursor-pointer"
+                                disabled={savedTaskLoading[task.id] === 'edit'}
+                                variant="ghost"
+                                aria-label="Cancel Edit"
+                              >
+                                <Cross2Icon className="w-4 h-4 text-gray-500 cursor-pointer" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Checkbox
+                                checked={task.completed}
+                                onCheckedChange={() => handleToggleComplete(task)}
+                                disabled={savedTaskLoading[task.id] === 'toggle'}
+                                className="mr-2 cursor-pointer self-center"
+                              />
+                              <span className={task.completed ? 'line-through self-center text-gray-400 font-normal' : 'self-center text-gray-900 font-normal'}>{task.content}</span>
+                              <Button
+                                onClick={() => handleStartEditTask(task)}
+                                className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
+                                variant="ghost"
+                                aria-label="Edit Task"
+                              >
+                                <Pencil1Icon className="w-4 h-4 cursor-pointer" />
+                              </Button>
+                              <Button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                disabled={savedTaskLoading[task.id] === 'delete'}
+                                variant="ghost"
+                                aria-label="Delete Task"
+                              >
+                                {savedTaskLoading[task.id] === 'delete' ? (
+                                  <span className="text-xs">...</span>
+                                ) : (
+                                  <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
+                                )}
+                              </Button>
+                            </>
+                          )}
                         </div>
-                        {task.category && <span className="ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center">{task.category}</span>}
-                        {task.dueDate && <span className="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
-                        <div className="flex items-center gap-1 ml-2">
-                          <Input
-                            value={task.newSubtaskContent || ''}
-                            onChange={e => {
-                              const val = e.target.value;
-                              setSavedTasks((prev: any[]) => prev.map(t => t.id === task.id ? { ...t, newSubtaskContent: val } : t));
-                            }}
-                            placeholder="Add subtask"
-                            className="w-32"
-                            onKeyDown={e => { if (e.key === 'Enter') task.id && token && handleAddSubtask(task.id, token, task.newSubtaskContent, setSavedTasks); }}
-                          />
-                          <Button
-                            onClick={() => task.id && token && handleAddSubtask(task.id, token, task.newSubtaskContent, setSavedTasks)}
-                            disabled={!task.newSubtaskContent || !task.newSubtaskContent.trim()}
-                            className="p-2 cursor-pointer"
-                            variant="ghost"
-                            aria-label="Add Subtask"
-                          >
-                            <PlusIcon className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        {editTaskId !== task.id && (
+                          <>
+                            {task.category && <span className="ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center">{task.category}</span>}
+                            {task.dueDate && <span className="ml-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+                            <div className="flex items-center gap-1 ml-2">
+                              <Input
+                                value={newSubtaskInputs[task.id] || ''}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setNewSubtaskInputs(prev => ({ ...prev, [task.id]: val }));
+                                }}
+                                placeholder="Add subtask"
+                                className="w-32"
+                                onKeyDown={e => { if (e.key === 'Enter') task.id && token && handleAddSubtask(task.id, token, newSubtaskInputs[task.id], setNewSubtaskInputs); }}
+                              />
+                              <Button
+                                onClick={() => task.id && token && handleAddSubtask(task.id, token, newSubtaskInputs[task.id], setNewSubtaskInputs)}
+                                disabled={!newSubtaskInputs[task.id] || !newSubtaskInputs[task.id].trim()}
+                                className="p-2 cursor-pointer"
+                                variant="ghost"
+                                aria-label="Add Subtask"
+                              >
+                                <PlusIcon className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </li>
                   );
