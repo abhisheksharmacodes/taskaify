@@ -21,18 +21,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!decoded) {
     return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
   }
-  // Find user by Firebase UID
   const userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
   if (userRows.length === 0) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
   const user = userRows[0];
-  // Check that the task belongs to the user
   const taskRows = await db.select().from(tasks).where(and(eq(tasks.id, Number(id)), eq(tasks.userId, user.id)));
   if (taskRows.length === 0) {
     return NextResponse.json({ error: 'Task not found or not yours' }, { status: 404 });
   }
-  // Get all subtasks for this task
   const allSubtasks = await db.select().from(subtasks).where(eq(subtasks.taskId, Number(id)));
   return NextResponse.json(allSubtasks);
 }
@@ -48,13 +45,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!decoded) {
     return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
   }
-  // Find user by Firebase UID
   const userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
   if (userRows.length === 0) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
   const user = userRows[0];
-  // Check that the task belongs to the user
   const taskRows = await db.select().from(tasks).where(and(eq(tasks.id, Number(id)), eq(tasks.userId, user.id)));
   if (taskRows.length === 0) {
     return NextResponse.json({ error: 'Task not found or not yours' }, { status: 404 });

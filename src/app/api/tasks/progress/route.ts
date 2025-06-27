@@ -16,24 +16,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
     }
 
-    // Log the decoded UID
     console.log('Decoded UID:', decoded.uid);
     console.log('#############################################################################:', process.env.DATABASE_URL);
 
-    // Log all users in the DB
     const allUsers = await db.select().from(users);
     console.log('All users in DB:', allUsers);
 
-    // Find user by Firebase UID
     const userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
-    // Log the user rows
     console.log('User rows:', userRows);
     if (userRows.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     const user = userRows[0];
 
-    // Get all tasks for this user
     const userTasks = await db.select().from(tasks).where(eq(tasks.userId, user.id));
     const total = userTasks.length;
     const completed = userTasks.filter(t => t.completed).length;

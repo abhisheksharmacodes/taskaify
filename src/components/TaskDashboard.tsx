@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthProvider';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -79,6 +79,7 @@ function TaskDashboard() {
   // Add this state near the other useState hooks
   const [newSubtaskInputs, setNewSubtaskInputs] = useState<{ [taskId: number]: string }>({});
   const [initialLoading, setInitialLoading] = useState(true);
+  const isFirstLoad = useRef(true);
 
   // Helper to get today's date in yyyy-mm-dd format
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -126,7 +127,9 @@ function TaskDashboard() {
   // Fetch saved tasks and progress (with category filter)
   const fetchTasksAndProgress = () => {
     if (!token) return;
-    setInitialLoading(true); // Start loading
+    if (isFirstLoad.current) {
+      setInitialLoading(true); // Only show skeleton on first load
+    }
     let url = '/api/tasks';
     if (selectedCategory) {
       url += `?category=${encodeURIComponent(selectedCategory)}`;
@@ -145,12 +148,14 @@ function TaskDashboard() {
       })
       .then(data => {
         setSavedTasks(data);
-        setInitialLoading(false); // Only set to false after first fetch
+        setInitialLoading(false); // Hide skeleton after first fetch
+        isFirstLoad.current = false; // Mark as not first load anymore
       })
       .catch(err => {
         setSnackbar({ message: 'Failed to fetch tasks: ' + (err.message || err), type: 'error' });
         setSnackbarVisible(true);
         setInitialLoading(false);
+        isFirstLoad.current = false;
       });
     fetch('/api/tasks/progress', { headers: { Authorization: `Bearer ${token}` } })
       .then(async res => {

@@ -15,14 +15,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
   }
 
-  // Find user by Firebase UID
   const userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
   if (userRows.length === 0) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }
   const user = userRows[0];
 
-  // Get all categories for this user
   const userCategories = await db.select().from(categories).where(eq(categories.userId, user.id));
   return NextResponse.json(userCategories.map(c => c.name));
 }
@@ -39,7 +37,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
   }
 
-  // Find user by Firebase UID
   const userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
   if (userRows.length === 0) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -52,13 +49,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid category name' }, { status: 400 });
   }
 
-  // Insert category if it doesn't exist
   try {
     await db.insert(categories).values({ userId: user.id, name });
     console.log('Category inserted:', name);
   } catch (e: unknown) {
     console.log('Insert error:', e);
-    // Ignore duplicate error
   }
   return NextResponse.json({ success: true });
 } 

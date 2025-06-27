@@ -16,13 +16,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
     }
 
-    // Check if user already exists
     const userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
     if (userRows.length > 0) {
         return NextResponse.json({ success: true, user: userRows[0] });
     }
 
-    // Create user
     const inserted = await db.insert(users).values({
         firebaseUid: decoded.uid,
         email: decoded.email || '',
