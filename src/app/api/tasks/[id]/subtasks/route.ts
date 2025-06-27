@@ -10,7 +10,8 @@ const subtaskSchema = z.object({
   completed: z.boolean().optional(),
 });
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
     return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
@@ -27,16 +28,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
   const user = userRows[0];
   // Check that the task belongs to the user
-  const taskRows = await db.select().from(tasks).where(and(eq(tasks.id, Number(params.id)), eq(tasks.userId, user.id)));
+  const taskRows = await db.select().from(tasks).where(and(eq(tasks.id, Number(id)), eq(tasks.userId, user.id)));
   if (taskRows.length === 0) {
     return NextResponse.json({ error: 'Task not found or not yours' }, { status: 404 });
   }
   // Get all subtasks for this task
-  const allSubtasks = await db.select().from(subtasks).where(eq(subtasks.taskId, Number(params.id)));
+  const allSubtasks = await db.select().from(subtasks).where(eq(subtasks.taskId, Number(id)));
   return NextResponse.json(allSubtasks);
 }
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
     return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
   const user = userRows[0];
   // Check that the task belongs to the user
-  const taskRows = await db.select().from(tasks).where(and(eq(tasks.id, Number(params.id)), eq(tasks.userId, user.id)));
+  const taskRows = await db.select().from(tasks).where(and(eq(tasks.id, Number(id)), eq(tasks.userId, user.id)));
   if (taskRows.length === 0) {
     return NextResponse.json({ error: 'Task not found or not yours' }, { status: 404 });
   }
@@ -68,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Invalid payload', details: result.error.errors }, { status: 400 });
   }
   const newSubtask = await db.insert(subtasks).values({
-    taskId: Number(params.id),
+    taskId: Number(id),
     content: result.data.content,
     completed: result.data.completed ?? false,
   }).returning();

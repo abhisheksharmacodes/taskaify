@@ -14,7 +14,8 @@ const updateTaskSchema = z.object({
   dueDate: z.string().datetime().optional().nullable(),
 });
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
     return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
@@ -33,14 +34,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const user = userRows[0];
 
   // Find task by id and userId
-  const taskRows = await db.select().from(tasks).where(and(eq(tasks.id, Number(params.id)), eq(tasks.userId, user.id)));
+  const taskRows = await db.select().from(tasks).where(and(eq(tasks.id, Number(id)), eq(tasks.userId, user.id)));
   if (taskRows.length === 0) {
     return NextResponse.json({ error: 'Task not found' }, { status: 404 });
   }
   return NextResponse.json(taskRows[0]);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
     return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
@@ -78,7 +80,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const updated = await db.update(tasks)
     .set(updateData)
-    .where(and(eq(tasks.id, Number(params.id)), eq(tasks.userId, user.id)))
+    .where(and(eq(tasks.id, Number(id)), eq(tasks.userId, user.id)))
     .returning();
 
   if (updated.length === 0) {
@@ -87,7 +89,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json(updated[0]);
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const authHeader = req.headers.get('authorization');
   if (!authHeader) {
     return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
@@ -107,7 +110,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   // Only delete if task belongs to user
   const deleted = await db.delete(tasks)
-    .where(and(eq(tasks.id, Number(params.id)), eq(tasks.userId, user.id)))
+    .where(and(eq(tasks.id, Number(id)), eq(tasks.userId, user.id)))
     .returning();
 
   if (deleted.length === 0) {
