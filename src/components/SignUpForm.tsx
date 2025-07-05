@@ -8,6 +8,7 @@ import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
 
 export default function SignUpForm() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [snackbar, setSnackbar] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -40,6 +41,14 @@ export default function SignUpForm() {
     e.preventDefault();
     setLoading(true);
     setSnackbar(null);
+    
+    if (!name.trim()) {
+      setSnackbar({ message: 'Please enter your name.', type: 'error' });
+      setSnackbarVisible(true);
+      setLoading(false);
+      return;
+    }
+    
     const pwError = validatePassword(password);
     if (pwError) {
       setSnackbar({ message: pwError, type: 'error' });
@@ -49,6 +58,7 @@ export default function SignUpForm() {
     }
     try {
       await createUserWithEmailAndPassword(auth, email, password);
+      localStorage.setItem('userName', name.trim());
       setSnackbar({ message: 'Account created! Redirecting...', type: 'success' });
       setSnackbarVisible(true);
       setTimeout(() => router.push('/dashboard'), 800);
@@ -63,6 +73,13 @@ export default function SignUpForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto mt-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300">
       <h2 className="text-2xl font-bold mb-4 text-gray-900">Sign Up</h2>
+      <Input
+        type="text"
+        placeholder="Full Name"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        required
+      />
       <Input
         type="email"
         placeholder="Email"

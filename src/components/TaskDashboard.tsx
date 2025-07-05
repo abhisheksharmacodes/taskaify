@@ -124,6 +124,45 @@ function TaskDashboard() {
       .catch(() => setCategories(['general']));
   }, [token]);
 
+  // Create/update user with name
+  const createUserWithName = useCallback(() => {
+    if (!token) return;
+    const userName = localStorage.getItem('userName');
+    if (userName) {
+      // First try to update existing user with PUT
+      fetch('/api/users', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: userName }),
+      }).then((res) => {
+        if (res.ok) {
+          // Remove the name from localStorage after successful update
+          localStorage.removeItem('userName');
+        } else if (res.status === 404) {
+          // User doesn't exist, create with POST
+          return fetch('/api/users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ name: userName }),
+          });
+        }
+      }).then((res) => {
+        if (res && res.ok) {
+          // Remove the name from localStorage after successful creation
+          localStorage.removeItem('userName');
+        }
+      }).catch(err => {
+        console.error('Failed to create/update user with name:', err);
+      });
+    }
+  }, [token]);
+
   // Fetch saved tasks and progress (with category filter)
   const fetchTasksAndProgress = () => {
     if (!token) return;
@@ -181,6 +220,7 @@ function TaskDashboard() {
   }, [token, savedTasks, fetchCategories]);
 
   useEffect(() => {
+    createUserWithName();
     fetchTasksAndProgress();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, selectedCategory]);
