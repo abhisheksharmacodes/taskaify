@@ -80,6 +80,7 @@ function TaskDashboard() {
   const [newSubtaskInputs, setNewSubtaskInputs] = useState<{ [taskId: number]: string }>({});
   const [initialLoading, setInitialLoading] = useState(true);
   const isFirstLoad = useRef(true);
+  const [saveAllLoading, setSaveAllLoading] = useState(false);
 
   // Helper to get today's date in yyyy-mm-dd format
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -262,6 +263,7 @@ function TaskDashboard() {
           defaultCategories[i] = 'general';
         });
         setGeneratedTaskCategories(defaultCategories);
+        setGeneratedTaskDueDates({});
         setSnackbar({ message: 'Tasks generated!', type: 'success' });
         setSnackbarVisible(true);
         fetchTasksAndProgress();
@@ -312,6 +314,8 @@ function TaskDashboard() {
         });
         setGeneratedTaskCategories(newCategories);
         setGeneratedTaskDueDates(newDueDates);
+        // If all generated tasks are now saved, clear the topic field
+        if (newTasks.length === 0) setTopic('');
         return newTasks;
       });
       await fetchTasksAndProgress();
@@ -454,7 +458,12 @@ function TaskDashboard() {
   };
 
   // Add discard handler
-  const handleDiscardAll = () => setGeneratedTasks([]);
+  const handleDiscardAll = () => {
+    setGeneratedTasks([]);
+    setGeneratedTaskCategories({});
+    setGeneratedTaskDueDates({});
+    setTopic(''); // Clear topic when all generated tasks are discarded
+  };
 
   // Add new category handler
   const handleCreateCategory = async (e?: React.FormEvent) => {
@@ -636,6 +645,47 @@ function TaskDashboard() {
                   aria-label="Regenerate Tasks"
                 >
                   Regenerate
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    setSaveAllLoading(true);
+                    if (!token) return;
+                    const savePromises = generatedTasks.map((task, i) => {
+                      const taskCategory = generatedTaskCategories[i] || '';
+                      const dueDate = generatedTaskDueDates[i] ? new Date(generatedTaskDueDates[i]).toISOString() : undefined;
+                      const result = taskSchema.safeParse({ content: task, category: taskCategory });
+                      if (!result.success) return Promise.resolve({ error: result.error.errors[0].message });
+                      return fetch('/api/tasks', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({ content: task, category: taskCategory, dueDate }),
+                      }).then(res => res.ok ? null : res.text().then(msg => ({ error: msg })));
+                    });
+                    const results = await Promise.all(savePromises);
+                    const errors = results.filter(r => r && r.error);
+                    setGeneratedTasks([]);
+                    setGeneratedTaskCategories({});
+                    setGeneratedTaskDueDates({});
+                    setTopic(''); // Clear topic when all generated tasks are saved
+                    await fetchTasksAndProgress();
+                    await fetchCategories();
+                    if (errors.length > 0) {
+                      setSnackbar({ message: `Some tasks failed to save: ${errors.map(e => e && e.error).join('; ')}`, type: 'error' });
+                    } else {
+                      setSnackbar({ message: 'All tasks saved!', type: 'success' });
+                    }
+                    setSnackbarVisible(true);
+                    setSaveAllLoading(false);
+                  }}
+                  disabled={saveAllLoading || Object.values(generatedTaskLoading).some(Boolean) || generatedTasks.length === 0}
+                  className="ml-1 cursor-pointer flex items-center gap-1"
+                  aria-label="Save All Generated Tasks"
+                >
+                  {saveAllLoading ? 'Saving...' : 'Save All'}
                 </Button>
                 <Button
                   variant="outline"

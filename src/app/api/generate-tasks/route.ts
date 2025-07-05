@@ -32,7 +32,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
     }
 
-    const prompt = `Generate a list of 5 concise, actionable tasks to learn about ${body.topic}. Return only the tasks, no numbering or formatting.`;
+    // Determine prompt based on optional count
+    let prompt;
+    if (body.count && Number.isInteger(body.count) && body.count > 0) {
+      prompt = `Generate a list of ${body.count} concise, actionable tasks to learn about ${body.topic}. Return each task as a separate line, with no numbering, no formatting, and do NOT group multiple tasks in a single line. Each line should be a single, actionable task.`;
+    } else {
+      prompt = `Generate as many concise, actionable tasks as possible to learn about ${body.topic}. Return each task as a separate line, with no numbering, no formatting, and do NOT group multiple tasks in a single line. Each line should be a single, actionable task.`;
+    }
 
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
