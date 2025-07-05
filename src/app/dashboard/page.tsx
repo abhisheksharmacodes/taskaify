@@ -8,7 +8,7 @@ import Image from 'next/image'
 
 function DashboardHeader({ userName, userNameLoading, user }: { userName: string | null, userNameLoading: boolean, user: { email: string | null } }) {
   return (
-    <header className="w-full flex items-center justify-between py-6 px-8 bg-white shadow-sm mb-8">
+    <header className="w-full flex items-center justify-between py-4 px-8 bg-white shadow-sm mb-8">
       {/* Logo and App Name */}
       <div className="flex items-center gap-2">
         <Image src="logo.svg" width="40" height="42" alt="logo"></Image>
@@ -82,9 +82,9 @@ function DashboardContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardHeader userName={userName} userNameLoading={userNameLoading} user={user} />
-      <div className="max-w-4xl mx-auto p-6 flex items-center flex-col bg-white rounded-xl shadow-lg mt-8">
+      
         <TaskDashboard />
-      </div>
+      
     </div>
   );
 }

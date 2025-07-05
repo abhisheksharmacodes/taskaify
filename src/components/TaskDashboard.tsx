@@ -485,18 +485,19 @@ function TaskDashboard() {
     }
   };
 
-  return ( <div className="w-full max-w-3xl mx-auto mt-8 space-y-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300 text-gray-900">
-      {initialLoading ? (
-        <div className="space-y-4">
-          {/* Replace with your actual skeleton component or markup */}
-          <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
-          <div className="h-12 bg-gray-200 rounded w-full animate-pulse" />
-          <div className="h-12 bg-gray-200 rounded w-full animate-pulse" />
-          <div className="h-12 bg-gray-200 rounded w-full animate-pulse" />
-        </div>
-      ) : (
-        <>
-          {/* Progress Bar */}
+  return (<div className="w-full max-w-4xl mx-auto mt-8 space-y-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300 text-gray-900">
+    {initialLoading ? (
+      <div className="space-y-4">
+        {/* Replace with your actual skeleton component or markup */}
+        <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+        <div className="h-12 bg-gray-200 rounded w-full animate-pulse" />
+        <div className="h-12 bg-gray-200 rounded w-full animate-pulse" />
+        <div className="h-12 bg-gray-200 rounded w-full animate-pulse" />
+      </div>
+    ) : (
+      <>
+        {/* Progress Bar */}
+        {flatSavedTasks.length !== 0 &&
           <div>
             <div className="flex justify-between mb-1">
               <span className="text-sm font-medium text-gray-800">Progress</span>
@@ -508,9 +509,10 @@ function TaskDashboard() {
                 style={{ width: `${progress.progress}%` }}
               ></div>
             </div>
-          </div>
+          </div>}
 
-          {/* Category filter dropdown and create category button */}
+        {/* Category filter dropdown and create category button */}
+        {flatSavedTasks.length !== 0 &&
           <div className="flex gap-2 items-center">
             <label htmlFor="category-filter" className="text-gray-800 text-sm">Filter by Category:</label>
             <Select value={selectedCategory || 'all'} onValueChange={v => setSelectedCategory(v === 'all' ? '' : v)}>
@@ -559,98 +561,134 @@ function TaskDashboard() {
                 </form>
               </DialogContent>
             </Dialog>
-          </div>
+          </div>}
 
-          {/* Topic and category input and generate button */}
-          <div className="flex gap-2">
-            <Input
-              className="flex-1"
-              placeholder="Enter a topic (e.g. Learn Python)"
-              value={topic}
-              onChange={e => setTopic(e.target.value)}
-            />
-            <Button
-              onClick={handleGenerate}
-              disabled={!topic || generateLoading}
-              className='cursor-pointer'
-            >
-              {generateLoading ? 'Generating...' : 'Generate Tasks'}
-            </Button>
-          </div>
-          {snackbarVisible && (
-            <Alert
-              variant={snackbar?.type === 'error' ? 'destructive' : 'default'}
-              className="fixed bottom-4 left-4 z-[9999] max-w-sm w-full px-4"
-            >
-              <AlertDescription>{snackbar?.message || ''}</AlertDescription>
-            </Alert>
-          )}
+        {/* Topic and category input and generate button */}
+        <div className="flex gap-2">
+          <Input
+            className="flex-1"
+            placeholder="Enter a topic (e.g. Learn Python)"
+            value={topic}
+            onChange={e => setTopic(e.target.value)}
+          />
+          <Button
+            onClick={handleGenerate}
+            disabled={!topic || generateLoading}
+            className='cursor-pointer'
+          >
+            {generateLoading ? 'Generating...' : 'Generate Tasks'}
+          </Button>
+        </div>
+        {snackbarVisible && (
+          <Alert
+            variant={snackbar?.type === 'error' ? 'destructive' : 'default'}
+            className="fixed bottom-4 left-4 z-[9999] max-w-sm w-full px-4"
+          >
+            <AlertDescription>{snackbar?.message || ''}</AlertDescription>
+          </Alert>
+        )}
 
-          {/* Generated tasks */}
-          {generatedTasks.length > 0 && (
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-semibold text-gray-900">Generated Tasks</h3>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleGenerate}
-                    className="ml-1 cursor-pointer flex items-center gap-1"
-                    aria-label="Regenerate Tasks"
-                  >
-                    Regenerate
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleDiscardAll}
-                    className="ml-1 cursor-pointer flex items-center gap-1 border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 focus:ring-red-500"
-                    aria-label="Discard All Generated Tasks"
-                  >
-                    Discard All
-                  </Button>
-                </div>
-              </div>
-              <ul className="space-y-2">
-                {generatedTasks.map((task: string, i: number) => (
-                  <li key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 px-4 shadow-sm transition-all duration-200 hover:shadow-md">
-                    <span className="flex-1 text-gray-900">{task}</span>
-                    <Select
-                      value={generatedTaskCategories[i] || ''}
-                      onValueChange={v => setGeneratedTaskCategories(prev => ({ ...prev, [i]: v }))}
-                    >
-                      <SelectTrigger className="w-32 mr-2">
-                        <SelectValue placeholder="Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat, idx) => (
-                          <SelectItem key={idx} value={cat}>{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <input
-                      type="date"
-                      className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer"
-                      value={generatedTaskDueDates[i] || ''}
-                      onChange={e => setGeneratedTaskDueDates(prev => ({ ...prev, [i]: e.target.value }))}
-                      placeholder="Due date"
-                      min={todayStr}
-                    />
+        {/* Generated tasks */}
+        {generatedTasks.length > 0 && (
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-semibold text-gray-900">Generated Tasks</h3>
+              <div className="flex gap-2">
+                {flatSavedTasks.length == 0 && <Dialog open={createCategoryOpen} onOpenChange={setCreateCategoryOpen}>
+                  <DialogTrigger asChild>
                     <Button
-                      onClick={() => handleSaveTask(task, i)}
-                      disabled={!!generatedTaskLoading[i]}
-                      className="bg-green-600 cursor-pointer hover:bg-green-700"
+                      type="button"
+                      variant="outline"
+                      className="flex items-center gap-1 px-2 py-1 text-xs"
+                      aria-label="Create Category"
                     >
-                      {generatedTaskLoading[i] ? 'Saving...' : 'Save'}
+                      <PlusIcon className="w-4 h-4" /> Create Category
                     </Button>
-                  </li>
-                ))}
-              </ul>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                      <DialogTitle>Create New Category</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateCategory} className="flex flex-col gap-4 mt-2">
+                      <Input
+                        autoFocus
+                        placeholder="Category name"
+                        value={newCategoryName}
+                        onChange={e => setNewCategoryName(e.target.value)}
+                        maxLength={50}
+                        required
+                      />
+                      <DialogFooter className="flex gap-2 justify-end">
+                        <DialogClose asChild>
+                          <Button type="button" variant="secondary">Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={createCategoryLoading || !newCategoryName.trim()}>
+                          {createCategoryLoading ? 'Saving...' : 'Save'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>}
+                <Button
+                  variant="outline"
+                  onClick={handleGenerate}
+                  className="ml-1 cursor-pointer flex items-center gap-1"
+                  aria-label="Regenerate Tasks"
+                >
+                  Regenerate
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDiscardAll}
+                  className="ml-1 cursor-pointer flex items-center gap-1 border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 focus:ring-red-500"
+                  aria-label="Discard All Generated Tasks"
+                >
+                  Discard All
+                </Button>
+              </div>
             </div>
-          )}
+            <ul className="space-y-2">
+              {generatedTasks.map((task: string, i: number) => (
+                <li key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 px-4 shadow-sm transition-all duration-200 hover:shadow-md">
+                  <span className="flex-1 text-gray-900">{task}</span>
+                  <Select
+                    value={generatedTaskCategories[i] || ''}
+                    onValueChange={v => setGeneratedTaskCategories(prev => ({ ...prev, [i]: v }))}
+                  >
+                    <SelectTrigger className="w-32 mr-2">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat, idx) => (
+                        <SelectItem key={idx} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <input
+                    type="date"
+                    className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer"
+                    value={generatedTaskDueDates[i] || ''}
+                    onChange={e => setGeneratedTaskDueDates(prev => ({ ...prev, [i]: e.target.value }))}
+                    placeholder="Due date"
+                    min={todayStr}
+                  />
+                  <Button
+                    onClick={() => handleSaveTask(task, i)}
+                    disabled={!!generatedTaskLoading[i]}
+                    className="bg-green-600 cursor-pointer hover:bg-green-700"
+                  >
+                    {generatedTaskLoading[i] ? 'Saving...' : 'Save'}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-          {/* Saved tasks */}
+        {flatSavedTasks.length !== 0 &&
           <div>
             <h3 className="font-semibold mb-2 text-gray-900">Your Tasks</h3>
+
             <ul className="space-y-2">
               {flatSavedTasks.map((task: Task) => {
                 const hasSubtasks = counts[task.id] > 0;
@@ -864,7 +902,7 @@ function TaskDashboard() {
                                 }}
                                 placeholder="Add subtask"
                                 className="w-32"
-                                // onKeyDown={e => { if (e.key === 'Enter') task.id && token && handleAddSubtask(task.id, token, newSubtaskInputs[task.id], setNewSubtaskInputs); }}
+                              // onKeyDown={e => { if (e.key === 'Enter') task.id && token && handleAddSubtask(task.id, token, newSubtaskInputs[task.id], setNewSubtaskInputs); }}
                               />
                               <Button
                                 onClick={() => task.id && token && handleAddSubtask(task.id, token, newSubtaskInputs[task.id], setNewSubtaskInputs)}
@@ -884,10 +922,11 @@ function TaskDashboard() {
                 }
               })}
             </ul>
-          </div>
-        </>
-      )}
-    </div>
+
+          </div>}
+      </>
+    )}
+  </div>
   );
 }
 
