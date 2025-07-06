@@ -663,7 +663,7 @@ function TaskDashboard() {
                         <Button
                           type="button"
                           variant="outline"
-                          className="flex items-center gap-1 px-2 py-1 text-xs"
+                          className="ml-1 cursor-pointer flex items-center gap-1"
                           aria-label="Create Category"
                         >
                           <PlusIcon className="w-4 h-4" /> Create Category
