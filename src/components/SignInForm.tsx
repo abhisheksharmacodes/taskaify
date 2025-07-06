@@ -34,7 +34,8 @@ export default function SignInForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto mt-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300">
-      <h2 className="text-2xl font-bold mb-4 text-gray-900">Sign In</h2>
+      
+      <h2 className="text-2xl font-bold mb-4 text-gray-900 text-center">Sign In</h2>
       <Input
         type="email"
         placeholder="Email"

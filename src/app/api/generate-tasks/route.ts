@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
     // Determine prompt based on optional count
     let prompt;
     if (body.count && Number.isInteger(body.count) && body.count > 0) {
-      prompt = `Generate a list of ${body.count} concise, actionable tasks to learn about ${body.topic}. Return each task as a separate line, with no numbering, no formatting, and do NOT group multiple tasks in a single line. Each line should be a single, actionable task.`;
+      prompt = `if (no actionable tasks can be generated for this goal: ${body.topic} and if ${body.topic} is nothing related to a goal) then return 'false' (nothing other than 'false'), otherwise Generate a list of ${body.count} concise, actionable tasks to learn about ${body.topic}. Return each task as a separate line, with no numbering, no formatting, and do NOT group multiple tasks in a single line. Each line should be a single, actionable task.`;
     } else {
-      prompt = `Generate as many concise, actionable tasks as possible to learn about ${body.topic}. Return each task as a separate line, with no numbering, no formatting, and do NOT group multiple tasks in a single line. Each line should be a single, actionable task.`;
+      prompt = `if (no actionable tasks can be generated for this goal: ${body.topic} and if ${body.topic} is nothing related to a goal) then return 'false' (nothing other than 'false'), otherwise Generate as many concise, actionable tasks as possible to learn about ${body.topic}. Return each task as a separate line, with no numbering, no formatting, and do NOT group multiple tasks in a single line. Each line should be a single, actionable task.`;
     }
 
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -48,14 +48,17 @@ export async function POST(req: NextRequest) {
       }),
     });
     const geminiData = await geminiRes.json();
-    console.log('Gemini API response:', geminiData);
-    if (geminiData?.candidates?.[0]?.content) {
-      console.log('Gemini candidate content:', geminiData.candidates[0].content);
+
+    const resp = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (resp.trim() === 'false' || resp.trim() === 'false\n') {
+      return NextResponse.json({ tasks: false });
     }
+
     const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const generatedTasks = text.split('\n').map((t:string) => t.trim()).filter(Boolean);
+    const generatedTasks = text.split('\n').map((t: string) => t.trim()).filter(Boolean);
 
     // Only return generated tasks, do not insert into the database
+
     return NextResponse.json({ tasks: generatedTasks });
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error', details: String(error) }, { status: 500 });

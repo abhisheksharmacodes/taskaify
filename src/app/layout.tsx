@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Task manager",
+  title: "Taskaify",
   description: "Create and manage tasks effortlessly",
 };
 

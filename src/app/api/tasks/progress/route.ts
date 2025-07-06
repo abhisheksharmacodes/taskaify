@@ -16,14 +16,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
     }
 
-    console.log('Decoded UID:', decoded.uid);
-    console.log('#############################################################################:', process.env.DATABASE_URL);
-
     const allUsers = await db.select().from(users);
-    console.log('All users in DB:', allUsers);
-
     const userRows = await db.select().from(users).where(eq(users.firebaseUid, decoded.uid));
-    console.log('User rows:', userRows);
     if (userRows.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }

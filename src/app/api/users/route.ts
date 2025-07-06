@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    console.log("Database url: " + process.env.DATABASE_URL)
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
         return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 });
