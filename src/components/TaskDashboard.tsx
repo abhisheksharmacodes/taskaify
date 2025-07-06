@@ -191,10 +191,7 @@ function TaskDashboard() {
         isFirstLoad.current = false; // Mark as not first load anymore
       })
       .catch(err => {
-        setSnackbar({ message: 'Failed to fetch tasks: ' + (err.message || err), type: 'error' });
-        setSnackbarVisible(true);
-        setInitialLoading(false);
-        isFirstLoad.current = false;
+        showNotification({ message: 'Failed to fetch tasks: ' + (err.message || err), type: 'error' });
       });
     fetch('/api/tasks/progress', { headers: { Authorization: `Bearer ${token}` } })
       .then(async res => {
@@ -210,8 +207,7 @@ function TaskDashboard() {
       })
       .then(setProgress)
       .catch(err => {
-        setSnackbar({ message: 'Failed to fetch progress: ' + (err.message || err), type: 'error' });
-        setSnackbarVisible(true);
+        showNotification({ message: 'Failed to fetch progress: ' + (err.message || err), type: 'error' });
       });
   };
 
@@ -497,6 +493,16 @@ function TaskDashboard() {
       setCreateCategoryLoading(false);
     }
   };
+
+  // Add this helper at the top of TaskDashboard
+  function showNotification({ message, type }: { message: string, type: 'error' | 'success' }) {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      window.dispatchEvent(new CustomEvent('header-notification', { detail: { message, type } }));
+    } else {
+      setSnackbar({ message, type });
+      setSnackbarVisible(true);
+    }
+  }
 
   return (<>
     {flatSavedTasks.length === 0 && generatedTasks.length === 0 ? (
