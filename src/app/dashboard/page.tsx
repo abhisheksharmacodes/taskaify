@@ -6,60 +6,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image'
 
-// Add global style for header-pop animation
-const headerNotificationStyle = `
-@keyframes header-pop {
-  0% {
-    opacity: 0;
-    transform: translateY(60px) scale(0.2);
-  }
-  10% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  40% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  90% {
-    opacity: 1;
-    transform: translateY(-40px) scale(0.8);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-60px) scale(0.2);
-  }
-}
-.animate-header-pop {
-  animation: header-pop 4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-`;
-
-function HeaderNotification({ message, type, visible }: { message: string, type: 'error' | 'success', visible: boolean }) {
-  if (!visible) return null;
-  return (
-    <>
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
-        <div className="relative flex items-center justify-center">
-          {/* Animated circle */}
-          <div
-            className={`absolute animate-header-pop ${type === 'error' ? 'bg-red-800/10 shadow-[0_0_160px_140px_rgba(239,68,68,0.9)]' : 'bg-green-500/10 shadow-[0_0_60px_40px_rgba(34,197,94,0.5)]'} rounded-full`}
-            style={{ width: 0, height: 0 }}
-          />
-          {/* Message */}
-          <span className="relative text-white font-bold text-lg px-8 py-2 z-10">{message}</span>
-        </div>
-      </div>
-      <style>{headerNotificationStyle}</style>
-    </>
-  );
-}
-
-function DashboardHeader({ userName, userNameLoading, user, notification }: { userName: string | null, userNameLoading: boolean, user: { email: string | null }, notification?: { message: string, type: 'error' | 'success', visible: boolean } }) {
+function DashboardHeader({ userName, userNameLoading, user }: { userName: string | null, userNameLoading: boolean, user: { email: string | null } }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="w-full bg-white shadow-sm mb-8 relative overflow-hidden">
-      {notification && <HeaderNotification {...notification} />}
       <div className="flex items-center justify-between py-4 px-4 md:px-8">
         {/* Logo and App Name */}
         <div className="flex items-center gap-2">
@@ -122,7 +72,6 @@ function DashboardContent() {
   const router = useRouter();
   const [userName, setUserName] = useState<string | null>(null);
   const [userNameLoading, setUserNameLoading] = useState(true);
-  const [headerNotification, setHeaderNotification] = useState<{ message: string, type: 'error' | 'success', visible: boolean }>({ message: '', type: 'success', visible: false });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -149,19 +98,6 @@ function DashboardContent() {
     }
   }, [token, user]);
 
-  useEffect(() => {
-    const handler = (e: CustomEvent) => {
-      setHeaderNotification({ message: e.detail.message, type: e.detail.type, visible: true });
-      console.log('show');
-      setTimeout(() => {
-        console.log('hide');
-        setHeaderNotification(h => ({ ...h, visible: false }));
-      }, 3000);
-    };
-    window.addEventListener('header-notification', handler as EventListener);
-    return () => window.removeEventListener('header-notification', handler as EventListener);
-  }, []);
-
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="max-w-3xl w-full mx-auto p-6 bg-white rounded-xl shadow-lg">
@@ -183,7 +119,7 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader userName={userName} userNameLoading={userNameLoading} user={user} notification={headerNotification} />
+      <DashboardHeader userName={userName} userNameLoading={userNameLoading} user={user} />
       <TaskDashboard />
     </div>
   );

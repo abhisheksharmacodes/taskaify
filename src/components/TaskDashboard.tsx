@@ -11,6 +11,7 @@ import { z } from 'zod';
 import TaskSubtasks from './TaskSubtasks';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
+import Snackbar from "./Snackbar";
 
 const taskSchema = z.object({
   content: z.string().min(1, 'Task cannot be empty').max(255, 'Task too long'),
@@ -251,7 +252,8 @@ function TaskDashboard() {
       }
       const data = JSON.parse(text);
       if (data.tasks === false || (Array.isArray(data.tasks) && data.tasks.length === 0)) {
-        window.dispatchEvent(new CustomEvent('header-notification', { detail: { message: "Try a different goal", type: 'error' } }));
+        setSnackbar({ message: "Try a different goal", type: 'error' });
+        setSnackbarVisible(true);
         setGenerateLoading(false);
         return;
       }
@@ -510,15 +512,15 @@ function TaskDashboard() {
         {/* Content above canvas */}
         <div className="relative z-10 flex flex-col items-center w-full py-16 px-2 sm:px-0">
           
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 text-center tracking-tight drop-shadow-lg">
+          <h2 className="text-2xl sm:text-3xl font-semibold mb-2 sm:mb-3 text-center tracking-tight">
             Ready to Achieve More?
           </h2>
-          <p className="text-base sm:text-lg mb-4 text-gray-700 text-center max-w-xl font-medium">
+          <p className="text-base sm:text-lg mb-4 text-gray-700 text-center max-w-xl font-normal">
             Kickstart your productivity journey! Describe your goal or project, and we'll instantly generate a set of actionable tasks for you.
           </p>
-          <div className="w-full max-w-xl bg-white/80 rounded-2xl shadow-2xl p-4 sm:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center border border-blue-100">
+          <div className="w-full max-w-xl bg-white/80 rounded-2xl shadow-xl shadow-[20] p-4 sm:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center border border-blue-100">
             <Input
-              className="flex-1 text-base sm:text-xl px-4 sm:px-6 py-4 sm:py-[19px] border-2 border-blue-400 focus:border-blue-600 rounded-xl shadow-sm bg-white w-full"
+              className="flex-1 text-base sm:text-xl px-4 sm:px-4 py-4 sm:py-[19px] border-2 border-blue-400 focus:border-blue-600 rounded-lg shadow-sm bg-white w-full"
               placeholder="What do you want to achieve? (e.g. Learn Python)"
               value={topic}
               onChange={e => setTopic(e.target.value)}
@@ -529,22 +531,13 @@ function TaskDashboard() {
               <Button
                 onClick={handleGenerate}
                 disabled={!topic || generateLoading}
-                className="text-base sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-xl cursor-pointer bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10 w-full h-full"
+                className="text-base sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-lg cursor-pointer bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10 w-full h-full"
                 style={{ minWidth: '140px', height: '40px' }}
               >
                 {generateLoading ? 'Generating...' : 'Generate Tasks'}
               </Button>
             </div>
           </div>
-          
-          {snackbarVisible && (
-            <Alert
-              variant={snackbar?.type === 'error' ? 'destructive' : 'default'}
-              className="fixed bottom-4 left-4 z-[9999] max-w-sm w-full px-4"
-            >
-              <AlertDescription>{snackbar?.message || ''}</AlertDescription>
-            </Alert>
-          )}
         </div>
       </div>
     ) : <div className="w-full max-w-4xl mx-auto mt-8 space-y-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300 text-gray-900 min-h-screen">
@@ -644,20 +637,22 @@ function TaskDashboard() {
               </Button>
             </div>
             {snackbarVisible && (
-              <Alert
-                variant={snackbar?.type === 'error' ? 'destructive' : 'default'}
-                className="fixed bottom-4 left-4 z-[9999] max-w-sm w-full px-4"
-              >
-                <AlertDescription>{snackbar?.message || ''}</AlertDescription>
-              </Alert>
+              <Snackbar
+                message={snackbar?.message || ''}
+                type={snackbar?.type}
+                isVisible={snackbarVisible}
+                onClose={() => setSnackbarVisible(false)}
+                position="top"
+                direction="down"
+              />
             )}
 
             {/* Generated tasks */}
             {generatedTasks.length > 0 && (
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-semibold text-gray-900">Generated Tasks</h3>
-                  <div className="flex gap-2">
+                <div className="flex justify-between flex-col sm:flex-row items-center mb-4">
+                  <h3 className="font-semibold text-gray-900 mb-4 sm:mb-0">Generated Tasks</h3>
+                  <div className="flex gap-2 items-center justify-center flex-wrap">
                     {flatSavedTasks.length == 0 && <Dialog open={createCategoryOpen} onOpenChange={setCreateCategoryOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -666,7 +661,7 @@ function TaskDashboard() {
                           className="ml-1 cursor-pointer flex items-center gap-1"
                           aria-label="Create Category"
                         >
-                          <PlusIcon className="w-4 h-4" /> Create Category
+                          Create Category
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[400px]">
@@ -754,13 +749,22 @@ function TaskDashboard() {
                 </div>
                 <ul className="space-y-2">
                   {generatedTasks.map((task: string, i: number) => (
-                    <li key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 px-4 shadow-sm transition-all duration-200 hover:shadow-md">
-                      <span className="flex-1 text-gray-900">{task}</span>
+                    <li
+                      key={i}
+                      className="
+                        flex flex-col md:flex-row
+                        items-stretch md:items-center
+                        gap-y-2 md:gap-y-0 md:gap-x-2
+                        bg-gray-50 rounded-lg p-2 md:px-4 shadow-sm
+                        transition-all duration-200 hover:shadow-md
+                      "
+                    >
+                      <span className="flex-1 text-gray-900 break-words md:truncate">{task}</span>
                       <Select
                         value={generatedTaskCategories[i] || ''}
                         onValueChange={v => setGeneratedTaskCategories(prev => ({ ...prev, [i]: v }))}
                       >
-                        <SelectTrigger className="w-32 mr-2">
+                        <SelectTrigger className="w-full md:w-32 md:mr-2">
                           <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -771,7 +775,7 @@ function TaskDashboard() {
                       </Select>
                       <input
                         type="date"
-                        className="w-36 mr-2 px-2 py-1 border rounded cursor-pointer"
+                        className="w-full md:w-36 md:mr-2 px-2 py-1 border rounded cursor-pointer"
                         value={generatedTaskDueDates[i] || ''}
                         onChange={e => setGeneratedTaskDueDates(prev => ({ ...prev, [i]: e.target.value }))}
                         placeholder="Due date"
@@ -780,7 +784,7 @@ function TaskDashboard() {
                       <Button
                         onClick={() => handleSaveTask(task, i)}
                         disabled={!!generatedTaskLoading[i]}
-                        className="bg-green-600 cursor-pointer hover:bg-green-700"
+                        className="w-full md:w-auto bg-green-600 cursor-pointer hover:bg-green-700"
                       >
                         {generatedTaskLoading[i] ? 'Saving...' : 'Save'}
                       </Button>
@@ -1033,6 +1037,14 @@ function TaskDashboard() {
         </>
       )}
     </div>}
+    <Snackbar
+      message={snackbar?.message || ''}
+      type={snackbar?.type}
+      isVisible={snackbarVisible}
+      onClose={() => setSnackbarVisible(false)}
+      position="top"
+      direction="down"
+    />
   </>
   );
 }

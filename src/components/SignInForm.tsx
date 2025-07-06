@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
+import Snackbar from "./Snackbar";
 
 export default function SignInForm() {
   const [email, setEmail] = useState('');
@@ -51,9 +52,12 @@ export default function SignInForm() {
         required
       />
       {snackbarVisible && (
-        <Alert variant={snackbar?.type === 'error' ? 'destructive' : 'default'}>
-          <AlertDescription>{snackbar?.message || ''}</AlertDescription>
-        </Alert>
+        <Snackbar
+          message={snackbar?.message || ''}
+          type={snackbar?.type}
+          isVisible={snackbarVisible}
+          onClose={() => setSnackbarVisible(false)}
+        />
       )}
       <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
         {loading ? 'Signing in...' : 'Sign In'}

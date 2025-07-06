@@ -11,7 +11,32 @@ interface SnackbarProps {
   isVisible: boolean;
   onClose: () => void;
   duration?: number;
+  position?: 'top' | 'bottom';
+  direction?: 'up' | 'down';
 }
+
+const snackbarStyle = `
+@keyframes snackbar-in-down {
+  from { opacity: 0; transform: translateY(-32px) scale(0.95);}
+  to   { opacity: 1; transform: translateY(0) scale(1);}
+}
+@keyframes snackbar-out-up {
+  from { opacity: 1; transform: translateY(0) scale(1);}
+  to   { opacity: 0; transform: translateY(-32px) scale(0.95);}
+}
+@keyframes snackbar-in-up {
+  from { opacity: 0; transform: translateY(32px) scale(0.95);}
+  to   { opacity: 1; transform: translateY(0) scale(1);}
+}
+@keyframes snackbar-out-down {
+  from { opacity: 1; transform: translateY(0) scale(1);}
+  to   { opacity: 0; transform: translateY(32px) scale(0.95);}
+}
+.snackbar-animate-in-down { animation: snackbar-in-down 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.snackbar-animate-out-up { animation: snackbar-out-up 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.snackbar-animate-in-up { animation: snackbar-in-up 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.snackbar-animate-out-down { animation: snackbar-out-down 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+`;
 
 const Snackbar = ({
   message,
@@ -19,26 +44,27 @@ const Snackbar = ({
   isVisible,
   onClose,
   duration = 4000,
+  position = 'bottom',
+  direction = 'up',
 }: SnackbarProps) => {
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [animationClass, setAnimationClass] = useState('');
 
   useEffect(() => {
     if (isVisible) {
-      setIsAnimating(true);
-
-      // Auto-dismiss after duration
+      setVisible(true);
+      setAnimationClass(direction === 'down' ? 'snackbar-animate-in-down' : 'snackbar-animate-in-up');
+    } else if (visible) {
+      setAnimationClass(direction === 'down' ? 'snackbar-animate-out-up' : 'snackbar-animate-out-down');
       const timer = setTimeout(() => {
-        setIsAnimating(false);
-        setTimeout(() => {
-          onClose();
-        }, 300); // Wait for slide-down animation to complete
-      }, duration);
-
+        setVisible(false);
+        onClose();
+      }, 300); // match animation duration
       return () => clearTimeout(timer);
     }
-  }, [isVisible, duration, onClose]);
+  }, [isVisible, direction, visible, onClose]);
 
-  if (!isVisible) return null;
+  if (!visible) return null;
 
   const getIcon = () => {
     switch (type) {
@@ -73,25 +99,32 @@ const Snackbar = ({
     }
   };
 
+  // Positioning
+  const positionClass = position === 'top'
+    ? 'top-4 left-1/2 transform -translate-x-1/2'
+    : 'bottom-4 left-1/2 transform -translate-x-1/2';
+
   return (
-    <div className="fixed bottom-4 left-4 z-[9999] max-w-sm w-full px-4">
-      <div
-        className={`
-          ${getBgColor()} 
-          ${getTextColor()}
-          border rounded-lg shadow-lg p-4 
-          transform transition-all duration-300 ease-out
-          ${isAnimating ? "translate-x-0 opacity-100 scale-100" : "-translate-x-full opacity-0 scale-95"}
-        `}
-      >
-        <div className="flex items-center space-x-3">
-          <div className="flex-shrink-0">{getIcon()}</div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-left">{message}</p>
+    <>
+      <style>{snackbarStyle}</style>
+      <div className={`fixed ${positionClass} z-[9999] w-full max-w-sm px-4 flex justify-center`}>
+        <div
+          className={`
+            ${getBgColor()} 
+            ${getTextColor()}
+            border rounded-lg shadow-lg p-4 
+            ${animationClass}
+          `}
+        >
+          <div className="flex items-center space-x-3">
+            <div className="flex-shrink-0">{getIcon()}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-left">{message}</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
