@@ -527,19 +527,18 @@ function TaskDashboard() {
           </p>
           <div className="w-full max-w-xl bg-white/80 rounded-2xl shadow-xl shadow-[20] p-4 sm:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center border border-blue-100">
             <Input
-              className="flex-1 text-base sm:text-xl px-4 sm:px-4 py-[18px] border-2 border-gray-400 focus:border-blue-500 rounded-lg shadow-sm bg-white w-full"
+              className="flex-1 text-base sm:text-xl px-4 sm:px-4 py-[8px] sm:py-[18px] border-2 border-gray-400 focus:border-blue-500 rounded-lg shadow-sm bg-white w-full"
               placeholder="What do you want to achieve? (e.g. Learn Python)"
               value={topic}
               onChange={e => setTopic(e.target.value)}
               autoFocus
             />
-            <div className="relative w-full sm:w-auto" style={{ minWidth: '140px', width: '100%', maxWidth: '220px', height: '40px' }}>
+            <div className="relative w-[97%] h-[38px] sm:w-auto sm:min-w-[140px] sm:max-w-[180px]">
               <AnimatedLinesBackground />
               <Button
                 onClick={handleGenerate}
                 disabled={!topic || generateLoading}
-                className="text-sm sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-lg cursor-pointer bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10 w-full h-full"
-                
+                className="text-sm h-100 sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-lg cursor-pointer bg-gradient-to-r opacity-80 from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10 w-full h-full"
               >
                 {generateLoading ? 'Generating...' : 'Generate Tasks'}
               </Button>
