@@ -515,9 +515,9 @@ function TaskDashboard() {
 
   return (<>
     {flatSavedTasks.length === 0 && generatedTasks.length === 0 ? (
-      <div className="relative flex flex-col items-center justify-center gap-8 overflow-hidden">
+      <div className="relative flex flex-col items-center sm:px-0 justify-center gap-8 overflow-hidden">
         {/* Content above canvas */}
-        <div className="relative z-10 flex flex-col items-center w-full py-16 px-2 sm:px-0">
+        <div className="relative z-10 flex flex-col items-center w-full py-16 px-6 sm:px-0">
 
           <h2 className="text-2xl sm:text-3xl font-semibold mb-2 sm:mb-3 text-center tracking-tight">
             Ready to Achieve More?
@@ -527,7 +527,7 @@ function TaskDashboard() {
           </p>
           <div className="w-full max-w-xl bg-white/80 rounded-2xl shadow-xl shadow-[20] p-4 sm:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center border border-blue-100">
             <Input
-              className="flex-1 text-base sm:text-xl px-4 sm:px-4 py-[19px] border-2 border-blue-400 focus:border-blue-600 rounded-lg shadow-sm bg-white w-full"
+              className="flex-1 text-base sm:text-xl px-4 sm:px-4 py-[18px] border-2 border-gray-400 focus:border-blue-500 rounded-lg shadow-sm bg-white w-full"
               placeholder="What do you want to achieve? (e.g. Learn Python)"
               value={topic}
               onChange={e => setTopic(e.target.value)}
@@ -538,8 +538,8 @@ function TaskDashboard() {
               <Button
                 onClick={handleGenerate}
                 disabled={!topic || generateLoading}
-                className="text-base sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-lg cursor-pointer bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10 w-full h-full"
-                style={{ minWidth: '140px', height: '40px' }}
+                className="text-sm sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-lg cursor-pointer bg-gradient-to-r from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10 w-full h-full"
+                
               >
                 {generateLoading ? 'Generating...' : 'Generate Tasks'}
               </Button>
@@ -547,7 +547,7 @@ function TaskDashboard() {
           </div>
         </div>
       </div>
-    ) : <div className="w-full max-w-4xl mx-auto mt-8 space-y-8 bg-white rounded-xl shadow-lg p-6 transition-all duration-300 text-gray-900 min-h-screen">
+    ) : <div className="w-full max-w-4xl mx-auto mt-2 sm:mt-8 space-y-8 bg-white rounded-xl sm:shadow-lg p-6 transition-all duration-300 text-gray-900 min-h-screen">
       {initialLoading ? (
         <div className="space-y-4">
           {/* Replace with your actual skeleton component or markup */}
@@ -580,11 +580,11 @@ function TaskDashboard() {
             {/* Topic and category input and generate button */}
             <div className="flex gap-2 flex-col sm:flex-row">
               <Input
-                className="flex-1 p-4"
+                className="flex-1 p-4 py-8"
                 placeholder="Enter a topic (e.g. Learn Python)"
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
-                style={{ padding: '8px', paddingLeft: '12px' }}
+                style={{ padding: '10px', paddingLeft: '12px' }}
               />
               <Button
                 onClick={handleGenerate}
@@ -732,14 +732,18 @@ function TaskDashboard() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <input
-                        type="date"
-                        className="w-full md:w-36 md:mr-2 px-2 py-1 border rounded cursor-pointer"
-                        value={generatedTaskDueDates[i] || ''}
-                        onChange={e => setGeneratedTaskDueDates(prev => ({ ...prev, [i]: e.target.value }))}
-                        placeholder="Due date"
-                        min={todayStr}
-                      />
+                      <div className="relative w-full md:w-36 md:mr-2">
+                        <input
+                          type="date"
+                          className="w-full px-2 py-1 border rounded cursor-pointer bg-white"
+                          value={generatedTaskDueDates[i] || ''}
+                          onChange={e => setGeneratedTaskDueDates(prev => ({ ...prev, [i]: e.target.value }))}
+                          min={todayStr}
+                        />
+                        {!(generatedTaskDueDates[i]) && (
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs md:text-sm">dd-mm-yyyy</span>
+                        )}
+                      </div>
                       <Button
                         onClick={() => handleSaveTask(task, i)}
                         disabled={!!generatedTaskLoading[i]}
@@ -755,11 +759,11 @@ function TaskDashboard() {
 
             {/* Category filter dropdown and create category button */}
             {flatSavedTasks.length !== 0 &&
-              <div className="flex flex-col sm:flex-row gap-2 gap-y-2 items-stretch sm:items-center w-full">
+              <div className="flex flex-row gap-2 gap-y-2 sm:items-center w-full">
                 <label htmlFor="category-filter" className="text-gray-800 text-sm w-full sm:w-auto text-center sm:text-left">Filter by Category:</label>
-                <div className="flex flex-col sm:flex-row gap-2 w-full">
+                <div className="flex flex-row gap-2">
                   <Select value={selectedCategory || 'all'} onValueChange={v => setSelectedCategory(v === 'all' ? '' : v)}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectTrigger className="w-1/3 sm:w-[180px]">
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
                     <SelectContent>
@@ -774,7 +778,7 @@ function TaskDashboard() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="flex items-center gap-1 px-2 py-1 text-xs w-full sm:w-auto"
+                        className="flex items-center gap-1 px-2 py-1 text-xs w-1/2 sm:w-auto"
                         aria-label="Create Category"
                       >
                         <PlusIcon className="w-4 h-4" /> Create Category
@@ -817,7 +821,7 @@ function TaskDashboard() {
                       <Accordion type="single" collapsible key={task.id} className="space-y-2">
                         <AccordionItem value={String(task.id)} className="bg-gray-50 rounded-lg shadow-sm">
                           <AccordionTrigger className="w-full px-4 no-underline hover:no-underline cursor-pointer">
-                            <div className="group flex items-center gap-2 w-full">
+                            <div className="group flex items-center gap-2 w-full mb-1">
                               {editTaskId === task.id ? (
                                 <div className="flex items-center pr-3 sm:pr-0 justify-center flex-col sm:flex-row gap-2 w-full">
                                   <div className="flex flex-col sm:flex-row gap-2 w-full">
@@ -840,14 +844,18 @@ function TaskDashboard() {
                                         ))}
                                       </SelectContent>
                                     </Select>
-                                    <input
-                                      type="date"
-                                      className="w-full sm:w-36 px-2 py-1 border rounded cursor-pointer font-normal"
-                                      value={editTaskDueDate}
-                                      onChange={e => setEditTaskDueDate(e.target.value)}
-                                      placeholder="Due date"
-                                      min={todayStr}
-                                    />
+                                    <div className="relative w-full sm:w-36">
+                                      <input
+                                        type="date"
+                                        className="w-full px-2 py-1 border rounded cursor-pointer font-normal bg-white"
+                                        value={editTaskDueDate}
+                                        onChange={e => setEditTaskDueDate(e.target.value)}
+                                        min={todayStr}
+                                      />
+                                      {!editTaskDueDate && (
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs md:text-sm">dd-mm-yyyy</span>
+                                      )}
+                                    </div>
                                   </div>
                                   <div className="flex justify-center flex-row gap-2 ">
                                     <Button
@@ -991,14 +999,18 @@ function TaskDashboard() {
                                             ))}
                                           </SelectContent>
                                         </Select>
-                                        <input
-                                          type="date"
-                                          className="w-full sm:w-36 px-2 py-1 border rounded cursor-pointer font-normal"
-                                          value={editTaskDueDate}
-                                          onChange={e => setEditTaskDueDate(e.target.value)}
-                                          placeholder="Due date"
-                                          min={todayStr}
-                                        />
+                                        <div className="relative w-full sm:w-36">
+                                          <input
+                                            type="date"
+                                            className="w-full px-2 py-1 border rounded cursor-pointer font-normal bg-white"
+                                            value={editTaskDueDate}
+                                            onChange={e => setEditTaskDueDate(e.target.value)}
+                                            min={todayStr}
+                                          />
+                                          {!editTaskDueDate && (
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs md:text-sm">dd-mm-yyyy</span>
+                                          )}
+                                        </div>
                                       </div>
                                       <div className="flex flex-col sm:flex-row gap-2 w-full">
                                         <Button
@@ -1129,14 +1141,18 @@ function TaskDashboard() {
                                           ))}
                                         </SelectContent>
                                       </Select>
-                                      <input
-                                        type="date"
-                                        className="w-full sm:w-36 px-2 py-1 border rounded cursor-pointer font-normal"
-                                        value={editTaskDueDate}
-                                        onChange={e => setEditTaskDueDate(e.target.value)}
-                                        placeholder="Due date"
-                                        min={todayStr}
-                                      />
+                                      <div className="relative w-full sm:w-36">
+                                        <input
+                                          type="date"
+                                          className="w-full px-2 py-1 border rounded cursor-pointer font-normal bg-white"
+                                          value={editTaskDueDate}
+                                          onChange={e => setEditTaskDueDate(e.target.value)}
+                                          min={todayStr}
+                                        />
+                                        {!editTaskDueDate && (
+                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs md:text-sm">dd-mm-yyyy</span>
+                                        )}
+                                      </div>
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-2 w-full">
                                       <Button

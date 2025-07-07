@@ -14,7 +14,7 @@ function DashboardHeader({ userName, userNameLoading, user }: { userName: string
         {/* Logo and App Name */}
         <div className="flex items-center gap-2">
           <Image src="logo.svg" width="40" height="42" alt="logo" />
-          <span className="text-2xl font-bold text-gray-900 select-none">Taskaify</span>
+          <span className="text-2xl font-bold text-gray-700 select-none">Taskaify</span>
         </div>
         {/* Desktop Username and Sign Out */}
         <div className="hidden md:flex items-center gap-4">
