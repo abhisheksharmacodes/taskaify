@@ -538,7 +538,7 @@ function TaskDashboard() {
               <Button
                 onClick={handleGenerate}
                 disabled={!topic || generateLoading}
-                className="text-sm h-100 sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-lg cursor-pointer bg-gradient-to-r opacity-80 from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10 w-full h-full"
+                className="text-sm h-100 sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-lg cursor-pointer bg-gradient-to-r opacity-70 from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10 w-full h-full"
               >
                 {generateLoading ? 'Generating...' : 'Generate Tasks'}
               </Button>
@@ -1362,7 +1362,7 @@ function AnimatedLinesBackground() {
       const angle = Math.PI / 4 + (Math.random() - 0.5) * 0.08;
       const speed = 2.5 + Math.random() * 2.5;
       const length = 200 + Math.random() * 200;
-      return { x: startX, y: startY, angle, speed, length, opacity: 0.7 + Math.random() * 0.3, width: 4 + Math.random() * 3 };
+      return { x: startX, y: startY, angle, speed, length, opacity: 0.3, width: 1 };
     }
     linesRef.current = Array.from({ length: numLines }, randomLine);
 
@@ -1377,10 +1377,10 @@ function AnimatedLinesBackground() {
       for (let line of linesRef.current) {
         ctx.save();
         ctx.globalAlpha = line.opacity;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = line.width;
+        ctx.strokeStyle = '#6cf';
+        ctx.lineWidth = 1;
         ctx.lineCap = 'round';
-        ctx.shadowBlur = 16;
+        ctx.shadowBlur = 8;
         ctx.shadowColor = '#6cf';
         ctx.beginPath();
         ctx.moveTo(line.x, line.y);
