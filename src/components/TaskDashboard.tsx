@@ -528,7 +528,7 @@ function TaskDashboard() {
           <div className="w-full max-w-xl bg-white/80 rounded-2xl shadow-xl shadow-[20] p-4 sm:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center border border-blue-100">
             <Input
               className="flex-1 text-base sm:text-xl px-4 sm:px-4 py-[8px] sm:py-[18px] border-2 border-gray-400 focus:border-blue-500 rounded-lg shadow-sm bg-white w-full"
-              placeholder="What do you want to achieve? (e.g. Learn Python)"
+              placeholder="What do you want to achieve?"
               value={topic}
               onChange={e => setTopic(e.target.value)}
               autoFocus
@@ -544,6 +544,21 @@ function TaskDashboard() {
               </Button>
             </div>
           </div>
+          {/* Suggestion Chips */}
+          <div className="flex flex-wrap gap-2 mt-6 w-full justify-center">
+            {['Learn meditation', 'Start a Blog', 'Fitness Routine', 'Plan a Trip', 'Read More Books'].map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => setTopic(suggestion)}
+                className="px-3 py-1 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium transition-colors border border-blue-200 shadow-sm cursor-pointer"
+                style={{ outline: 'none' }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+          <div></div>
         </div>
       </div>
     ) : <div className="w-full max-w-4xl mx-auto mt-2 sm:mt-8 space-y-8 bg-white rounded-xl sm:shadow-lg p-6 transition-all duration-300 text-gray-900 min-h-screen">
@@ -580,7 +595,7 @@ function TaskDashboard() {
             <div className="flex gap-2 flex-col sm:flex-row">
               <Input
                 className="flex-1 p-4 py-8"
-                placeholder="Enter a topic (e.g. Learn Python)"
+                placeholder="Enter a goal"
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
                 style={{ padding: '10px', paddingLeft: '12px' }}
