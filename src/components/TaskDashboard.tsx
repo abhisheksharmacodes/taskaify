@@ -12,6 +12,8 @@ import TaskSubtasks from './TaskSubtasks';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
 import Snackbar from "./Snackbar";
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/dist/style.css';
 
 const taskSchema = z.object({
   content: z.string().min(1, 'Task cannot be empty').max(255, 'Task too long'),
@@ -49,6 +51,74 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     }
     return this.props.children;
   }
+}
+
+type ThemedDatePickerProps = {
+  value: string;
+  onChange: (date: string) => void;
+  minDate?: string;
+  className?: string;
+};
+
+// Calendar icon SVG
+const CalendarIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className="w-5 h-5 text-gray-400"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M6.75 3v2.25M17.25 3v2.25M3.75 7.5h16.5M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h10.5a2.25 2.25 0 0 1 2.25 2.25v10.5a2.25 2.25 0 0 1-2.25 2.25H6.75a2.25 2.25 0 0 1-2.25-2.25V6.75z"
+    />
+  </svg>
+);
+
+function ThemedDatePicker({ value, onChange, minDate, className }: ThemedDatePickerProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative w-full">
+      <input
+        readOnly
+        value={value || ''}
+        onClick={() => setOpen((v) => !v)}
+        placeholder="yyyy-mm-dd"
+        className={`w-full px-2 py-[5px] border rounded-md cursor-pointer bg-transparent pr-10 ${className || ''}`}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setOpen((v) => !v)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-0 m-0 bg-transparent border-none cursor-pointer"
+        aria-label="Open calendar"
+        style={{ outline: 'none' }}
+      >
+        <CalendarIcon />
+      </button>
+      {open && (
+        <div className="absolute z-50 bg-white border rounded shadow mt-1">
+          <DayPicker
+            mode="single"
+            selected={value ? new Date(value) : undefined}
+            onSelect={(date: Date | undefined) => {
+              setOpen(false);
+              onChange(date ? date.toISOString().slice(0, 10) : '');
+            }}
+            fromDate={minDate ? new Date(minDate) : undefined}
+            modifiersClassNames={{
+              selected: 'bg-blue-600 text-white',
+              today: 'border-blue-600',
+            }}
+            className="p-2"
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function TaskDashboard() {
@@ -747,12 +817,10 @@ function TaskDashboard() {
                         </SelectContent>
                       </Select>
                       <div className="relative w-full md:w-36 md:mr-2">
-                        <input
-                          type="date"
-                          className="w-full px-2 py-1 border rounded cursor-pointer bg-white"
+                        <ThemedDatePicker
                           value={generatedTaskDueDates[i] || ''}
-                          onChange={e => setGeneratedTaskDueDates(prev => ({ ...prev, [i]: e.target.value }))}
-                          min={todayStr}
+                          onChange={(date: string) => setGeneratedTaskDueDates(prev => ({ ...prev, [i]: date }))}
+                          minDate={todayStr}
                         />
                       </div>
                       <Button
@@ -774,7 +842,7 @@ function TaskDashboard() {
                 <label htmlFor="category-filter" className="text-gray-800 text-sm w-full sm:w-auto text-center sm:text-left">Filter by Category:</label>
                 <div className="flex flex-row gap-2">
                   <Select value={selectedCategory || 'all'} onValueChange={v => setSelectedCategory(v === 'all' ? '' : v)}>
-                    <SelectTrigger className="w-1/3 sm:w-[180px]">
+                    <SelectTrigger className="w-1/3 sm:w-[90px]">
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
                     <SelectContent>
@@ -856,16 +924,11 @@ function TaskDashboard() {
                                       </SelectContent>
                                     </Select>
                                     <div className="relative w-full sm:w-36">
-                                      <input
-                                        type="date"
-                                        className="w-full px-2 py-1 border rounded cursor-pointer font-normal bg-white"
+                                      <ThemedDatePicker
                                         value={editTaskDueDate}
-                                        onChange={e => setEditTaskDueDate(e.target.value)}
-                                        min={todayStr}
+                                        onChange={(date: string) => setEditTaskDueDate(date)}
+                                        minDate={todayStr}
                                       />
-                                      {!editTaskDueDate && (
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs md:text-sm">dd-mm-yyyy</span>
-                                      )}
                                     </div>
                                   </div>
                                   <div className="flex justify-center flex-row gap-2 ">
@@ -902,6 +965,7 @@ function TaskDashboard() {
                                       onCheckedChange={() => handleToggleComplete(task)}
                                       disabled={savedTaskLoading[task.id] === 'toggle'}
                                       className="mr-2 cursor-pointer self-center"
+                                      id="task-checkbox"
                                     />
                                     <div className='flex flex-col items-left'>
                                       <span className={task.completed ? 'text-left line-through text-gray-400 font-normal' : 'self-center text-left text-gray-900 font-normal'}>{task.content}</span>
@@ -1011,16 +1075,12 @@ function TaskDashboard() {
                                           </SelectContent>
                                         </Select>
                                         <div className="relative w-full sm:w-36">
-                                          <input
-                                            type="date"
-                                            className="w-full px-2 py-1 border rounded cursor-pointer font-normal bg-white"
+                                          <ThemedDatePicker
+                                            
                                             value={editTaskDueDate}
-                                            onChange={e => setEditTaskDueDate(e.target.value)}
-                                            min={todayStr}
+                                            onChange={(date: string) => setEditTaskDueDate(date)}
+                                            minDate={todayStr}
                                           />
-                                          {!editTaskDueDate && (
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs md:text-sm">dd-mm-yyyy</span>
-                                          )}
                                         </div>
                                       </div>
                                       <div className="flex flex-col sm:flex-row gap-2 w-full">
@@ -1153,16 +1213,12 @@ function TaskDashboard() {
                                         </SelectContent>
                                       </Select>
                                       <div className="relative w-full sm:w-36">
-                                        <input
-                                          type="date"
-                                          className="w-full px-2 py-1 border rounded cursor-pointer font-normal bg-white"
+                                        <ThemedDatePicker
                                           value={editTaskDueDate}
-                                          onChange={e => setEditTaskDueDate(e.target.value)}
-                                          min={todayStr}
+                                          onChange={(date: string) => setEditTaskDueDate(date)}
+                                          minDate={todayStr}
+                                          className="bg-red-500"
                                         />
-                                        {!editTaskDueDate && (
-                                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs md:text-sm">dd-mm-yyyy</span>
-                                        )}
                                       </div>
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-2 w-full">
