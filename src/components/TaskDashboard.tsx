@@ -670,7 +670,7 @@ function TaskDashboard() {
                 onChange={e => setTopic(e.target.value)}
                 style={{ padding: '10px', paddingLeft: '12px' }}
               />
-              <Button
+              <Button //
                 onClick={handleGenerate}
                 disabled={!topic || generateLoading}
                 className='cursor-pointer'
