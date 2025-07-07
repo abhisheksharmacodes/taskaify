@@ -754,9 +754,6 @@ function TaskDashboard() {
                           onChange={e => setGeneratedTaskDueDates(prev => ({ ...prev, [i]: e.target.value }))}
                           min={todayStr}
                         />
-                        {!(generatedTaskDueDates[i]) && (
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs md:text-sm">dd-mm-yyyy</span>
-                        )}
                       </div>
                       <Button
                         onClick={() => handleSaveTask(task, i)}
@@ -773,7 +770,7 @@ function TaskDashboard() {
 
             {/* Category filter dropdown and create category button */}
             {flatSavedTasks.length !== 0 &&
-              <div className="flex flex-row gap-2 gap-y-2 sm:items-center w-full">
+              <div className="flex flex-row gap-2 gap-y-2 items-center w-full">
                 <label htmlFor="category-filter" className="text-gray-800 text-sm w-full sm:w-auto text-center sm:text-left">Filter by Category:</label>
                 <div className="flex flex-row gap-2">
                   <Select value={selectedCategory || 'all'} onValueChange={v => setSelectedCategory(v === 'all' ? '' : v)}>
@@ -792,7 +789,7 @@ function TaskDashboard() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="flex items-center gap-1 px-2 py-1 text-xs w-1/2 sm:w-auto"
+                        className="flex items-center gap-1 px-2 py-1 text-xs w-40 sm:w-auto"
                         aria-label="Create Category"
                       >
                         <PlusIcon className="w-4 h-4" /> Create Category
