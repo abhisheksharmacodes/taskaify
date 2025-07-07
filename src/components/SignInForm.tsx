@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,23 @@ export default function SignInForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // Add friendly error mapping
+  const getFriendlyError = (err: any) => {
+    if (err.code === 'auth/invalid-credential' || err.message?.includes('auth/invalid-credential')) {
+      return 'Invalid email or password';
+    }
+    if (err.code === 'auth/user-not-found' || err.message?.includes('auth/user-not-found')) {
+      return 'No account found with this email.';
+    }
+    if (err.code === 'auth/wrong-password' || err.message?.includes('auth/wrong-password')) {
+      return 'Invalid email or password';
+    }
+    if (err.code === 'auth/invalid-email' || err.message?.includes('auth/invalid-email')) {
+      return 'Please enter a valid email address.';
+    }
+    return 'Sign in failed. Please try again.';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -25,8 +42,8 @@ export default function SignInForm() {
       setSnackbar({ message: 'Signed in successfully!', type: 'success' });
       setSnackbarVisible(true);
       setTimeout(() => router.push('/dashboard'), 800);
-    } catch (err: unknown) {
-      setSnackbar({ message: (err as Error).message, type: 'error' });
+    } catch (err: any) {
+      setSnackbar({ message: getFriendlyError(err), type: 'error' });
       setSnackbarVisible(true);
     } finally {
       setLoading(false);

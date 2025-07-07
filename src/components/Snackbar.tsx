@@ -49,20 +49,33 @@ const Snackbar = ({
 }: SnackbarProps) => {
   const [visible, setVisible] = useState(false);
   const [animationClass, setAnimationClass] = useState('');
+  const [autoHideTimer, setAutoHideTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isVisible) {
       setVisible(true);
       setAnimationClass(direction === 'down' ? 'snackbar-animate-in-down' : 'snackbar-animate-in-up');
+      if (autoHideTimer) clearTimeout(autoHideTimer);
+      const timer = setTimeout(() => {
+        setAnimationClass(direction === 'down' ? 'snackbar-animate-out-up' : 'snackbar-animate-out-down');
+        setTimeout(() => {
+          setVisible(false);
+          onClose();
+        }, 300);
+      }, duration);
+      setAutoHideTimer(timer);
     } else if (visible) {
       setAnimationClass(direction === 'down' ? 'snackbar-animate-out-up' : 'snackbar-animate-out-down');
       const timer = setTimeout(() => {
         setVisible(false);
         onClose();
-      }, 300); // match animation duration
-      return () => clearTimeout(timer);
+      }, 300);
+      setAutoHideTimer(timer);
     }
-  }, [isVisible, direction, visible, onClose]);
+    return () => {
+      if (autoHideTimer) clearTimeout(autoHideTimer);
+    };
+  }, [isVisible, direction, visible, duration, onClose]);
 
   if (!visible) return null;
 

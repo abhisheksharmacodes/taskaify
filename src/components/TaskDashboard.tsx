@@ -527,7 +527,7 @@ function TaskDashboard() {
           </p>
           <div className="w-full max-w-xl bg-white/80 rounded-2xl shadow-xl shadow-[20] p-4 sm:p-6 flex flex-col sm:flex-row gap-3 sm:gap-4 items-center border border-blue-100">
             <Input
-              className="flex-1 text-base sm:text-xl px-4 sm:px-4 py-4 sm:py-[19px] border-2 border-blue-400 focus:border-blue-600 rounded-lg shadow-sm bg-white w-full"
+              className="flex-1 text-base sm:text-xl px-4 sm:px-4 py-[19px] border-2 border-blue-400 focus:border-blue-600 rounded-lg shadow-sm bg-white w-full"
               placeholder="What do you want to achieve? (e.g. Learn Python)"
               value={topic}
               onChange={e => setTopic(e.target.value)}
@@ -875,7 +875,8 @@ function TaskDashboard() {
                                   </div>
                                 </div>
                               ) : (
-                                <div className='flex w-full'>
+                                <div className='flex flex-row w-full'>
+
                                   <div className='flex flex-1 gap-2 items-center'>
                                     <Checkbox
                                       checked={task.completed}
@@ -883,61 +884,66 @@ function TaskDashboard() {
                                       disabled={savedTaskLoading[task.id] === 'toggle'}
                                       className="mr-2 cursor-pointer self-center"
                                     />
-                                    <span className={task.completed ? 'self-center line-through text-gray-400 font-normal' : 'self-center text-gray-900 font-normal'}>{task.content}</span>
-                                    {/* Kebab menu for mobile */}
-                                    <div className="sm:hidden flex items-center ml-2 relative">
-                                      <button
-                                        className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        onClick={() => setMobileMenuOpen(task.id)}
-                                        aria-label="Open actions menu"
-                                      >
-                                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/></svg>
-                                      </button>
-                                      {mobileMenuOpen === task.id && (
-                                        <div className="absolute right-0 z-10 mt-2 w-28 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                          <button
-                                            onClick={() => { handleStartEditTask(task); setMobileMenuOpen(null); }}
-                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                          >
-                                            Edit
-                                          </button>
-                                          <button
-                                            onClick={() => { handleDeleteTask(task.id); setMobileMenuOpen(null); }}
-                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                                          >
-                                            Delete
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                    {/* Desktop edit/delete icons (unchanged) */}
-                                    <div className="hidden sm:inline-flex">
-                                      <Button
-                                        onClick={() => handleStartEditTask(task)}
-                                        className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                                        disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
-                                        variant="ghost"
-                                        aria-label="Edit Task"
-                                      >
-                                        <Pencil1Icon className="w-4 h-4 cursor-pointer" />
-                                      </Button>
-                                      <Button
-                                        onClick={() => handleDeleteTask(task.id)}
-                                        className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                                        disabled={savedTaskLoading[task.id] === 'delete'}
-                                        variant="ghost"
-                                        aria-label="Delete Task"
-                                      >
-                                        {savedTaskLoading[task.id] === 'delete' ? (
-                                          <span className="text-xs">...</span>
-                                        ) : (
-                                          <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
-                                        )}
-                                      </Button>
+                                    <div className='flex flex-col items-left'>
+                                      <span className={task.completed ? 'text-left line-through text-gray-400 font-normal' : 'self-center text-left text-gray-900 font-normal'}>{task.content}</span>
+                                      <div className='self-baseline mt-1'>
+                                        {task.category && <span className={`px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
+                                        {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+                                      </div>
                                     </div>
                                   </div>
-                                  {task.category && <span className={`ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
-                                  {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+
+                                  {/* Three dot menu for mobile */}
+                                  <div className="sm:hidden flex items-center ml-1 mr-1 relative">
+                                    <button
+                                      className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      onClick={() => setMobileMenuOpen(task.id)}
+                                      aria-label="Open actions menu"
+                                    >
+                                      <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5" /><circle cx="10" cy="10" r="1.5" /><circle cx="10" cy="16" r="1.5" /></svg>
+                                    </button>
+                                    {mobileMenuOpen === task.id && (
+                                      <div className="absolute right-0 z-10 mt-2 w-28 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                        <button
+                                          onClick={() => { handleStartEditTask(task); setMobileMenuOpen(null); }}
+                                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        >
+                                          Edit
+                                        </button>
+                                        <button
+                                          onClick={() => { handleDeleteTask(task.id); setMobileMenuOpen(null); }}
+                                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {/* Desktop edit/delete icons (unchanged) */}
+                                  <div className="hidden sm:inline-flex">
+                                    <Button
+                                      onClick={() => handleStartEditTask(task)}
+                                      className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                      disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
+                                      variant="ghost"
+                                      aria-label="Edit Task"
+                                    >
+                                      <Pencil1Icon className="w-4 h-4 cursor-pointer" />
+                                    </Button>
+                                    <Button
+                                      onClick={() => handleDeleteTask(task.id)}
+                                      className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                      disabled={savedTaskLoading[task.id] === 'delete'}
+                                      variant="ghost"
+                                      aria-label="Delete Task"
+                                    >
+                                      {savedTaskLoading[task.id] === 'delete' ? (
+                                        <span className="text-xs">...</span>
+                                      ) : (
+                                        <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
+                                      )}
+                                    </Button>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -1036,7 +1042,7 @@ function TaskDashboard() {
                                             onClick={() => setMobileMenuOpen(task.id)}
                                             aria-label="Open actions menu"
                                           >
-                                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/></svg>
+                                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5" /><circle cx="10" cy="10" r="1.5" /><circle cx="10" cy="16" r="1.5" /></svg>
                                           </button>
                                           {mobileMenuOpen === task.id && (
                                             <div className="absolute right-0 z-10 mt-2 w-28 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
@@ -1102,10 +1108,10 @@ function TaskDashboard() {
                             <div className="flex items-center w-full">
                               <div className='flex-1 gap-2 flex items-center'>
                                 {editTaskId === task.id ? (
-                                  <div className="flex flex-col gap-2 w-full">
-                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                  <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                    <div className="flex-1 flex flex-col sm:flex-row gap-2 w-full">
                                       <Input
-                                        className="flex-1 w-full font-normal"
+                                        className="flex-1 w-auto font-normal"
                                         value={editTaskContent}
                                         onChange={e => setEditTaskContent(e.target.value)}
                                         key={`edit-input-${task.id}`}
@@ -1173,7 +1179,7 @@ function TaskDashboard() {
                                         onClick={() => setMobileMenuOpen(task.id)}
                                         aria-label="Open actions menu"
                                       >
-                                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/></svg>
+                                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5" /><circle cx="10" cy="10" r="1.5" /><circle cx="10" cy="16" r="1.5" /></svg>
                                       </button>
                                       {mobileMenuOpen === task.id && (
                                         <div className="absolute right-0 z-10 mt-2 w-28 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
@@ -1217,10 +1223,13 @@ function TaskDashboard() {
                                         )}
                                       </Button>
                                     </div>
+
                                   </>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1 ml-2">
+                              {task.category && <span className={`ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
+                              {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+                              {editTaskId !== task.id && <div className="flex items-center gap-1 ml-2">
                                 <Input
                                   value={newSubtaskInputs[task.id] || ''}
                                   onChange={e => {
@@ -1239,7 +1248,7 @@ function TaskDashboard() {
                                 >
                                   <PlusIcon className="w-4 h-4" />
                                 </Button>
-                              </div>
+                              </div>}
                             </div>
                           </li>
                         );
