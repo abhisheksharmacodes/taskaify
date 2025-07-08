@@ -153,6 +153,10 @@ function TaskDashboard() {
   const isFirstLoad = useRef(true);
   const [saveAllLoading, setSaveAllLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<number | null>(null);
+  // Add state to store all tasks
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [catFetched, setCatFetched] = useState(false)
+  const [usedCategories, setUsedCategories] = useState<string[]>([])
 
   // Helper to get today's date in yyyy-mm-dd format
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -259,6 +263,7 @@ function TaskDashboard() {
       })
       .then(data => {
         setSavedTasks(data);
+        setAllTasks(data);  // all tasks (unfiltered reference)
         setInitialLoading(false); // Hide skeleton after first fetch
         isFirstLoad.current = false; // Mark as not first load anymore
       })
@@ -347,6 +352,7 @@ function TaskDashboard() {
         setSnackbarVisible(true);
       }
     } catch (e: any) {
+      console.log('Gemini API error:', e); // Log all errors including resource exhausted
       setSnackbar({ message: e.message, type: 'error' });
       setSnackbarVisible(true);
     } finally {
@@ -507,8 +513,20 @@ function TaskDashboard() {
 
   const counts = useSubtaskCounts(flatSavedTasks, token ?? '');
 
-  // Derive categories used in at least one task for the filter dropdown
-  const usedCategories = Array.from(new Set(flatSavedTasks.map((t: Task) => t.category).filter((cat): cat is string => typeof cat === 'string')));
+  // Calculate usedCategories from allTasks, memoized so it only changes when allTasks changes
+  useEffect(() => {
+    // Only set once when allTasks is first loaded and not empty
+    if (allTasks.length > 0 && usedCategories.length === 0) {
+      setUsedCategories(Array.from(
+        new Set(
+          allTasks
+            .map((t: Task) => t.category)
+            .filter((cat): cat is string => typeof cat === 'string')
+        )
+      ));
+    }
+    // eslint-disable-next-line
+  }, [allTasks]);
 
   // Inline handler for adding a subtask
   const handleAddSubtask = async (
@@ -673,7 +691,7 @@ function TaskDashboard() {
                 onClick={handleGenerate}
                 disabled={!topic || generateLoading}
                 className='cursor-pointer p-5'
-                
+
               >
                 {generateLoading ? 'Generating...' : 'Generate Tasks'}
               </Button>
@@ -740,38 +758,40 @@ function TaskDashboard() {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={async () => {
-                        setSaveAllLoading(true);
-                        if (!token) return;
-                        const savePromises = generatedTasks.map((task, i) => {
-                          const taskCategory = generatedTaskCategories[i] || '';
-                          const dueDate = generatedTaskDueDates[i] ? new Date(generatedTaskDueDates[i]).toISOString() : undefined;
-                          const result = taskSchema.safeParse({ content: task, category: taskCategory });
-                          if (!result.success) return Promise.resolve({ error: result.error.errors[0].message });
-                          return fetch('/api/tasks', {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              Authorization: `Bearer ${token}`,
-                            },
-                            body: JSON.stringify({ content: task, category: taskCategory, dueDate }),
-                          }).then(res => res.ok ? null : res.text().then(msg => ({ error: msg })));
-                        });
-                        const results = await Promise.all(savePromises);
-                        const errors = results.filter(r => r && r.error);
-                        setGeneratedTasks([]);
-                        setGeneratedTaskCategories({});
-                        setGeneratedTaskDueDates({});
-                        setTopic(''); // Clear topic when all generated tasks are saved
-                        await fetchTasksAndProgress();
-                        await fetchCategories();
-                        if (errors.length > 0) {
-                          setSnackbar({ message: `Some tasks failed to save: ${errors.map(e => e && e.error).join('; ')}`, type: 'error' });
-                        } else {
-                          setSnackbar({ message: 'All tasks saved!', type: 'success' });
-                        }
-                        setSnackbarVisible(true);
-                        setSaveAllLoading(false);
+                      onClick={() => {
+                        (async () => {
+                          setSaveAllLoading(true);
+                          if (!token) return;
+                          const savePromises = generatedTasks.map((task, i) => {
+                            const taskCategory = generatedTaskCategories[i] || '';
+                            const dueDate = generatedTaskDueDates[i] ? new Date(generatedTaskDueDates[i]).toISOString() : undefined;
+                            const result = taskSchema.safeParse({ content: task, category: taskCategory });
+                            if (!result.success) return Promise.resolve({ error: result.error.errors[0].message });
+                            return fetch('/api/tasks', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${token}`,
+                              },
+                              body: JSON.stringify({ content: task, category: taskCategory, dueDate }),
+                            }).then(res => res.ok ? null : res.text().then(msg => ({ error: msg })));
+                          });
+                          const results = await Promise.all(savePromises);
+                          const errors = results.filter(r => r && r.error);
+                          setGeneratedTasks([]);
+                          setGeneratedTaskCategories({});
+                          setGeneratedTaskDueDates({});
+                          setTopic(''); // Clear topic when all generated tasks are saved
+                          await fetchTasksAndProgress();
+                          await fetchCategories();
+                          if (errors.length > 0) {
+                            setSnackbar({ message: `Some tasks failed to save: ${errors.map(e => e && e.error).join('; ')}`, type: 'error' });
+                          } else {
+                            setSnackbar({ message: 'All tasks saved!', type: 'success' });
+                          }
+                          setSnackbarVisible(true);
+                          setSaveAllLoading(false);
+                        })();
                       }}
                       disabled={saveAllLoading || Object.values(generatedTaskLoading).some(Boolean) || generatedTasks.length === 0}
                       className="ml-1 cursor-pointer flex items-center gap-1 w-full sm:w-auto"
@@ -840,13 +860,13 @@ function TaskDashboard() {
               <div className="flex flex-row gap-2 gap-y-2 items-center w-full">
                 <label htmlFor="category-filter" className="text-gray-800 text-sm w-full sm:w-auto text-center sm:text-left">Filter by Category:</label>
                 <div className="flex flex-row gap-2">
-                  <Select value={selectedCategory || 'all'} onValueChange={(v: string) => setSelectedCategory(v === 'all' ? '' : v)}>
-                    <SelectTrigger className="w-1/3 sm:w-[90px]">
+                  <Select value={selectedCategory || 'all'} onValueChange={(v: string) => {setSelectedCategory(v === 'all' ? '' : v);console.log(usedCategories)}}>
+                    <SelectTrigger className="w-1/3 sm:w-[130px]">
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
-                      {usedCategories.filter((cat): cat is string => typeof cat === 'string').map((cat, i) => (
+                      {usedCategories.map((cat, i) => (
                         <SelectItem key={i} value={cat}>{cat}</SelectItem>
                       ))}
                     </SelectContent>
@@ -1075,7 +1095,7 @@ function TaskDashboard() {
                                         </Select>
                                         <div className="relative w-full sm:w-36">
                                           <ThemedDatePicker
-                                            
+
                                             value={editTaskDueDate}
                                             onChange={(date: string) => setEditTaskDueDate(date)}
                                             minDate={todayStr}
