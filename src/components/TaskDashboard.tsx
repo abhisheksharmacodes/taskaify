@@ -86,8 +86,8 @@ function ThemedDatePicker({ value, onChange, minDate, className }: ThemedDatePic
         readOnly
         value={value || ''}
         onClick={() => setOpen((v) => !v)}
-        placeholder="yyyy-mm-dd"
-        className={`w-full px-2 py-[5px] border rounded-md cursor-pointer bg-transparent pr-10 ${className || ''}`}
+        placeholder="dd-mm-yyy"
+        className={`w-full px-2 py-[5px] border rounded-md cursor-pointer bg-transparent pr-10 font-normal ${className || ''}`}
       />
       <button
         type="button"
@@ -805,7 +805,7 @@ function TaskDashboard() {
                       <span className="flex-1 text-gray-900 break-words md:truncate">{task}</span>
                       <Select
                         value={generatedTaskCategories[i] || ''}
-                        onValueChange={v => setGeneratedTaskCategories(prev => ({ ...prev, [i]: v }))}
+                        onValueChange={(v: string) => setGeneratedTaskCategories(prev => ({ ...prev, [i]: v }))}
                       >
                         <SelectTrigger className="w-full md:w-32 md:mr-2">
                           <SelectValue placeholder="Category" />
@@ -841,7 +841,7 @@ function TaskDashboard() {
               <div className="flex flex-row gap-2 gap-y-2 items-center w-full">
                 <label htmlFor="category-filter" className="text-gray-800 text-sm w-full sm:w-auto text-center sm:text-left">Filter by Category:</label>
                 <div className="flex flex-row gap-2">
-                  <Select value={selectedCategory || 'all'} onValueChange={v => setSelectedCategory(v === 'all' ? '' : v)}>
+                  <Select value={selectedCategory || 'all'} onValueChange={(v: string) => setSelectedCategory(v === 'all' ? '' : v)}>
                     <SelectTrigger className="w-1/3 sm:w-[90px]">
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
@@ -912,7 +912,7 @@ function TaskDashboard() {
                                     />
                                     <Select
                                       value={editTaskCategory || ''}
-                                      onValueChange={v => setEditTaskCategory(v)}
+                                      onValueChange={(v: string) => setEditTaskCategory(v)}
                                     >
                                       <SelectTrigger className="w-full sm:w-32 font-normal">
                                         <SelectValue placeholder="Category" />
@@ -1063,7 +1063,7 @@ function TaskDashboard() {
                                         />
                                         <Select
                                           value={editTaskCategory || ''}
-                                          onValueChange={v => setEditTaskCategory(v)}
+                                          onValueChange={(v: string) => setEditTaskCategory(v)}
                                         >
                                           <SelectTrigger className="w-full sm:w-32 font-normal">
                                             <SelectValue placeholder="Category" />
@@ -1201,7 +1201,7 @@ function TaskDashboard() {
                                       />
                                       <Select
                                         value={editTaskCategory || ''}
-                                        onValueChange={v => setEditTaskCategory(v)}
+                                        onValueChange={(v: string) => setEditTaskCategory(v)}
                                       >
                                         <SelectTrigger className="w-full sm:w-32 font-normal">
                                           <SelectValue placeholder="Category" />
