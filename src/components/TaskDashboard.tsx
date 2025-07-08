@@ -157,6 +157,7 @@ function TaskDashboard() {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [catFetched, setCatFetched] = useState(false)
   const [usedCategories, setUsedCategories] = useState<string[]>([])
+  const [showIntro,setShowIntro] = useState(false)
 
   // Helper to get today's date in yyyy-mm-dd format
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -262,9 +263,11 @@ function TaskDashboard() {
         return JSON.parse(text);
       })
       .then(data => {
+        console.log(data)
         setSavedTasks(data);
         setAllTasks(data);  // all tasks (unfiltered reference)
         setInitialLoading(false); // Hide skeleton after first fetch
+        setShowIntro(!data.length)
         isFirstLoad.current = false; // Mark as not first load anymore
       })
       .catch(err => {
@@ -602,7 +605,7 @@ function TaskDashboard() {
   }, [mobileMenuOpen]);
 
   return (<>
-    {flatSavedTasks.length === 0 && generatedTasks.length === 0 ? (
+    {showIntro ? (
       <div className="relative flex flex-col items-center sm:px-0 justify-center gap-8 overflow-hidden">
         {/* Content above canvas */}
         <div className="relative z-10 flex flex-col items-center w-full py-16 px-6 sm:px-0">
