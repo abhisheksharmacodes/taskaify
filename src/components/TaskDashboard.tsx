@@ -267,7 +267,8 @@ function TaskDashboard() {
         setSavedTasks(data);
         setAllTasks(data);  // all tasks (unfiltered reference)
         setInitialLoading(false); // Hide skeleton after first fetch
-        setShowIntro(!data.length)
+        if (!showIntro)
+          setShowIntro(!data.length)
         isFirstLoad.current = false; // Mark as not first load anymore
       })
       .catch(err => {
@@ -348,6 +349,7 @@ function TaskDashboard() {
         setSnackbar({ message: 'Tasks generated!', type: 'success' });
         setSnackbarVisible(true);
         fetchTasksAndProgress();
+        setShowIntro(false)
         fetchCategories();
       }
       else {
@@ -438,22 +440,29 @@ function TaskDashboard() {
     }
   };
 
-  // Delete a task
+  // Delete a task (optimistic UI)
   const handleDeleteTask = async (taskId: number) => {
     if (!token) return;
+    // Optimistically remove from UI
+    const prevTasks = savedTasks;
     setSavedTaskLoading(prev => ({ ...prev, [taskId]: 'delete' }));
+    setSavedTasks(tasks => tasks.filter(t => t.id !== taskId));
     try {
-      await fetch(`/api/tasks/${taskId}`, {
+      const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      fetchTasksAndProgress();
+      if (!res.ok) throw new Error(await res.text() || 'Failed to delete');
+      // Success: do nothing, already removed
       setSnackbar({ message: 'Task deleted!', type: 'success' });
       setSnackbarVisible(true);
+      fetchTasksAndProgress();
     } catch (e: any) {
-      setSnackbar({ message: e.message, type: 'error' });
+      // Failure: revert
+      setSavedTasks(prevTasks);
+      setSnackbar({ message: e.message || 'Failed to delete task', type: 'error' });
       setSnackbarVisible(true);
     } finally {
       setSavedTaskLoading(prev => ({ ...prev, [taskId]: null }));
