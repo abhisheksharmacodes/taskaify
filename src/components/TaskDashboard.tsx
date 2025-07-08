@@ -86,8 +86,8 @@ function ThemedDatePicker({ value, onChange, minDate, className }: ThemedDatePic
         readOnly
         value={value || ''}
         onClick={() => setOpen((v) => !v)}
-        placeholder="dd-mm-yyy"
-        className={`w-full px-2 py-[5px] border rounded-md cursor-pointer bg-transparent pr-10 font-normal ${className || ''}`}
+        placeholder="DD-MM-YYYY"
+        className={`w-full px-3 py-[6px] text-sm border rounded-md cursor-pointer bg-transparent pr-10 font-normal ${className || ''}`}
       />
       <button
         type="button"
@@ -603,12 +603,12 @@ function TaskDashboard() {
               onChange={e => setTopic(e.target.value)}
               autoFocus
             />
-            <div className="relative w-[97%] h-[38px] sm:w-auto sm:min-w-[140px] sm:max-w-[180px]">
-              <AnimatedLinesBackground />
+            <div className="relative w-[180px] h-[38px]">
+              <AnimatedLinesBackground loading={generateLoading} />
               <Button
                 onClick={handleGenerate}
                 disabled={!topic || generateLoading}
-                className="text-sm h-100 sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-lg cursor-pointer bg-gradient-to-r opacity-70 from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10 w-full h-full"
+                className="w-full h-full text-sm sm:text-xl px-2 sm:px-4 py-3 sm:py-4 rounded-lg cursor-pointer bg-gradient-to-r opacity-70 from-blue-600 to-purple-600 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg transition-colors duration-400 scale-105 relative z-10"
               >
                 {generateLoading ? 'Generating...' : 'Generate Tasks'}
               </Button>
@@ -664,17 +664,16 @@ function TaskDashboard() {
             {/* Topic and category input and generate button */}
             <div className="flex gap-2 flex-col sm:flex-row">
               <Input
-                className="flex-1 p-4 py-8"
+                className="flex-1 p-4 py-2 sm:py-5"
                 placeholder="Enter a goal"
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
-                style={{ padding: '10px', paddingLeft: '12px' }}
               />
               <Button //
                 onClick={handleGenerate}
                 disabled={!topic || generateLoading}
-                className='cursor-pointer'
-                style={{ padding: '20px' }}
+                className='cursor-pointer p-5'
+                
               >
                 {generateLoading ? 'Generating...' : 'Generate Tasks'}
               </Button>
@@ -905,7 +904,7 @@ function TaskDashboard() {
                                 <div className="flex items-center pr-3 sm:pr-0 justify-center flex-col sm:flex-row gap-2 w-full">
                                   <div className="flex flex-col sm:flex-row gap-2 w-full">
                                     <Input
-                                      className="flex-1 w-full font-normal"
+                                      className="flex-1 w-full font-normal py-2"
                                       value={editTaskContent}
                                       onChange={e => setEditTaskContent(e.target.value)}
                                       key={`edit-input-${task.id}`}
@@ -1376,7 +1375,7 @@ type Line = {
   width: number;
 };
 
-function AnimatedLinesBackground() {
+function AnimatedLinesBackground({ loading }: { loading?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
   const linesRef = useRef<Line[]>([]);
@@ -1404,7 +1403,7 @@ function AnimatedLinesBackground() {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [loading]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1470,7 +1469,7 @@ function AnimatedLinesBackground() {
     return () => {
       if (animationRef.current) window.cancelAnimationFrame(animationRef.current);
     };
-  }, []);
+  }, [loading]);
 
   return (
     <canvas
