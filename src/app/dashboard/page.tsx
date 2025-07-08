@@ -12,7 +12,7 @@ function DashboardHeader({ userName, userNameLoading, user }: { userName: string
     <header className="w-full bg-white shadow-sm mb-8 relative overflow-hidden">
       <div className="flex items-center justify-between py-4 px-4 md:px-8">
         {/* Logo and App Name */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 scale-90">
           <Image src="logo.svg" width="40" height="42" alt="logo" />
           <span className="text-2xl font-bold text-gray-700 select-none">Taskaify</span>
         </div>

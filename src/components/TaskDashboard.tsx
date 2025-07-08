@@ -1309,8 +1309,8 @@ function TaskDashboard() {
                                   </>
                                 )}
                               </div>
-                              {task.category && <span className={`ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
-                              {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+                              {task.category && <span className={`ml-2 px-2 py-1 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
+                              {task.dueDate && <span className="ml-2 mr-2 px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
                               {editTaskId !== task.id && <div className="flex items-center gap-1 ml-2">
                                 <Input
                                   value={newSubtaskInputs[task.id] || ''}
