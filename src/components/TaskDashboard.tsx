@@ -418,12 +418,24 @@ function TaskDashboard() {
     }
   };
 
-  // Toggle complete/incomplete
+  // Toggle complete/incomplete (optimistic UI)
   const handleToggleComplete = async (task: Task) => {
     if (!token) return;
     setSavedTaskLoading(prev => ({ ...prev, [task.id]: 'toggle' }));
+    // Optimistically update task completion and progress
+    const prevTasks = [...savedTasks];
+    const updatedTasks = savedTasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t);
+    setSavedTasks(updatedTasks);
+    // Optimistically update progress bar and x/x text
+    const completedCount = updatedTasks.filter(t => t.completed).length;
+    const totalCount = updatedTasks.length;
+    setProgress({
+      total: totalCount,
+      completed: completedCount,
+      progress: totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100)
+    });
     try {
-      await fetch(`/api/tasks/${task.id}`, {
+      const res = await fetch(`/api/tasks/${task.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -431,9 +443,20 @@ function TaskDashboard() {
         },
         body: JSON.stringify({ completed: !task.completed }),
       });
+      if (!res.ok) throw new Error(await res.text() || 'Failed to update');
       fetchTasksAndProgress();
     } catch (e: any) {
-      setSnackbar({ message: e.message, type: 'error' });
+      // Failure: revert
+      setSavedTasks(prevTasks);
+      // Recalculate progress from prevTasks
+      const completedCount = prevTasks.filter(t => t.completed).length;
+      const totalCount = prevTasks.length;
+      setProgress({
+        total: totalCount,
+        completed: completedCount,
+        progress: totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100)
+      });
+      setSnackbar({ message: e.message || 'Failed to update task', type: 'error' });
       setSnackbarVisible(true);
     } finally {
       setSavedTaskLoading(prev => ({ ...prev, [task.id]: null }));
