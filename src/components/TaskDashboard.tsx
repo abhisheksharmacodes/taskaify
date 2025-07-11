@@ -712,8 +712,6 @@ function TaskDashboard() {
                 </div>
               </div>}
 
-
-
             {/* Topic and category input and generate button */}
             <div className="flex gap-2 flex-col sm:flex-row">
               <Input
