@@ -31,6 +31,7 @@ A productivity platform powered by AI for dynamic task generation, seamless orga
 
 ### 1. Clone & Install
 ```bash
+git clone https://github.com/abhisheksharmacodes/taskaify
 npm install
 ```
 
