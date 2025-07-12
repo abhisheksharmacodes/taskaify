@@ -8,8 +8,8 @@ import { Button } from './ui/button';
 export default function SignOutButton() {
   const router = useRouter();
   const handleSignOut = async () => {
-    await signOut(auth);
     router.push('/signin');
+    await signOut(auth);
   };
   return (
     <Button onClick={handleSignOut} className='cursor-pointer' variant="outline">

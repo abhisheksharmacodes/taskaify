@@ -138,7 +138,7 @@ function ThemedDatePicker({ value, onChange, minDate, className }: ThemedDatePic
       </button>
       
       {open && !isMobile && (
-        <div ref={datePickerRef} className="absolute z-50 bg-white border rounded shadow mt-1 scale-80 origin-top">
+        <div ref={datePickerRef} className="absolute z-50 bg-white border rounded shadow mt-1 scale-80 origin-top -translate-x-8">
           <DayPicker
             mode="single"
             selected={value ? new Date(value) : undefined}
