@@ -80,6 +80,43 @@ const CalendarIcon = () => (
 
 function ThemedDatePicker({ value, onChange, minDate, className }: ThemedDatePickerProps) {
   const [open, setOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+  
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  // Handle click outside to close date picker
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (open && !isMobile && datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    
+    if (open && !isMobile) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [open, isMobile]);
+  
+  const handleDateSelect = (date: Date | undefined) => {
+    setOpen(false);
+    onChange(date ? date.toISOString().slice(0, 10) : '');
+  };
+  
   return (
     <div className="relative w-full">
       <input
@@ -99,23 +136,53 @@ function ThemedDatePicker({ value, onChange, minDate, className }: ThemedDatePic
       >
         <CalendarIcon />
       </button>
-      {open && (
-        <div className="absolute z-50 bg-white border rounded shadow mt-1">
+      
+      {open && !isMobile && (
+        <div ref={datePickerRef} className="absolute z-50 bg-white border rounded shadow mt-1 scale-80 origin-top">
           <DayPicker
             mode="single"
             selected={value ? new Date(value) : undefined}
-            onSelect={(date: Date | undefined) => {
-              setOpen(false);
-              onChange(date ? date.toISOString().slice(0, 10) : '');
-            }}
-            fromDate={minDate ? new Date(minDate) : undefined}
+            onSelect={handleDateSelect}
+            fromDate={today}
+            disabled={{ before: today }}
             modifiersClassNames={{
               selected: 'bg-blue-600 text-white',
               today: 'border-blue-600',
+              disabled: 'text-gray-400 cursor-not-allowed',
             }}
             className="p-2"
           />
         </div>
+      )}
+      
+      {open && isMobile && (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Select Date</DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center py-4">
+              <DayPicker
+                mode="single"
+                selected={value ? new Date(value) : undefined}
+                onSelect={handleDateSelect}
+                fromDate={today}
+                disabled={{ before: today }}
+                modifiersClassNames={{
+                  selected: 'bg-blue-600 text-white',
+                  today: 'border-blue-600',
+                  disabled: 'text-gray-400 cursor-not-allowed',
+                }}
+                className="p-2"
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
@@ -161,6 +228,14 @@ function TaskDashboard() {
 
   // Helper to get today's date in yyyy-mm-dd format
   const todayStr = new Date().toISOString().slice(0, 10);
+
+  // Helper to format date for display (e.g., "17 Jul", "9 Dec")
+  const formatDateForDisplay = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    return `${day} ${month}`;
+  };
 
   // Helper to fetch subtask counts for all tasks
   const useSubtaskCounts = (tasks: Task[], token: string): { [key: number]: number } => {
@@ -503,13 +578,34 @@ function TaskDashboard() {
   // Save edited task
   const handleSaveEditTask = async (task: Task) => {
     if (!token) return;
-    const result = updateTaskSchema.safeParse({ content: editTaskContent, category: editTaskCategory, dueDate: editTaskDueDate ? new Date(editTaskDueDate).toISOString() : undefined });
+    const result = updateTaskSchema.safeParse({ content: editTaskContent, category: editTaskCategory, dueDate: editTaskDueDate ? new Date(editTaskDueDate).toISOString() : null });
     if (!result.success) {
       setSnackbar({ message: result.error.errors[0].message, type: 'error' });
       setSnackbarVisible(true);
       return;
     }
-    setSavedTaskLoading(prev => ({ ...prev, [task.id]: 'edit' }));
+    
+    // Show success message optimistically
+    setSnackbar({ message: 'Task updated!', type: 'success' });
+    setSnackbarVisible(true);
+    
+    // Optimistically update the task in the UI
+    const updatedTask: Task = {
+      ...task,
+      content: editTaskContent,
+      category: editTaskCategory || undefined,
+      dueDate: editTaskDueDate ? new Date(editTaskDueDate).toISOString() : undefined,
+    };
+    setSavedTasks(prevTasks => 
+      prevTasks.map(t => t.id === task.id ? updatedTask : t)
+    );
+    
+    // Exit edit mode immediately
+    setEditTaskId(null);
+    setEditTaskContent('');
+    setEditTaskCategory('');
+    setEditTaskDueDate('');
+    
     try {
       await fetch(`/api/tasks/${task.id}`, {
         method: 'PUT',
@@ -519,17 +615,20 @@ function TaskDashboard() {
         },
         body: JSON.stringify({ content: editTaskContent, category: editTaskCategory, dueDate: editTaskDueDate ? new Date(editTaskDueDate).toISOString() : null }),
       });
-      setEditTaskId(null);
-      setEditTaskContent('');
-      setEditTaskCategory('');
-      setEditTaskDueDate('');
       fetchTasksAndProgress();
       fetchCategories();
     } catch (e: any) {
+      // Revert optimistic update on error
+      setSavedTasks(prevTasks => 
+        prevTasks.map(t => t.id === task.id ? task : t)
+      );
+      // Re-enter edit mode on error
+      setEditTaskId(task.id);
+      setEditTaskContent(editTaskContent);
+      setEditTaskCategory(editTaskCategory);
+      setEditTaskDueDate(editTaskDueDate);
       setSnackbar({ message: e.message, type: 'error' });
       setSnackbarVisible(true);
-    } finally {
-      setSavedTaskLoading(prev => ({ ...prev, [task.id]: null }));
     }
   };
 
@@ -1023,7 +1122,7 @@ function TaskDashboard() {
                                       <span className={task.completed ? 'text-left line-through text-gray-400 font-normal' : 'self-center text-left text-gray-900 font-normal'}>{task.content}</span>
                                       <div className='self-baseline mt-1'>
                                         {task.category && <span className={`px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center capitalize! ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
-                                        {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+                                        {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{formatDateForDisplay(task.dueDate)}</span>}
                                       </div>
                                     </div>
                                   </div>
@@ -1223,7 +1322,7 @@ function TaskDashboard() {
                                         </div>
                                       </div>
                                       {task.category && <span className={`ml-2 px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
-                                      {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+                                      {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{formatDateForDisplay(task.dueDate)}</span>}
                                     </div>
                                   )}
                                 </div>
@@ -1363,7 +1462,7 @@ function TaskDashboard() {
                                 )}
                               </div>
                               {task.category && <span className={`ml-2 px-2 py-1 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
-                              {task.dueDate && <span className="ml-2 mr-2 px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
+                              {task.dueDate && <span className="ml-2 mr-2 px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs self-center">{formatDateForDisplay(task.dueDate)}</span>}
                               {editTaskId !== task.id && <div className="flex items-center gap-1 ml-2">
                                 <Input
                                   value={newSubtaskInputs[task.id] || ''}
