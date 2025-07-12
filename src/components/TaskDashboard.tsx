@@ -1022,7 +1022,7 @@ function TaskDashboard() {
                                     <div className='flex flex-col items-left'>
                                       <span className={task.completed ? 'text-left line-through text-gray-400 font-normal' : 'self-center text-left text-gray-900 font-normal'}>{task.content}</span>
                                       <div className='self-baseline mt-1'>
-                                        {task.category && <span className={`px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
+                                        {task.category && <span className={`px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs self-center capitalize! ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
                                         {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{task.dueDate.slice(0, 10)}</span>}
                                       </div>
                                     </div>

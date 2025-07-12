@@ -17,7 +17,7 @@ function DashboardHeader({ userName, userNameLoading, user }: { userName: string
           <span className="text-2xl font-bold text-gray-700 select-none">Taskaify</span>
         </div>
         {/* Desktop Username and Sign Out */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
           <span className="text-lg font-medium text-gray-700 min-w-[100px] block">
             {userNameLoading ? (
               <span className="inline-block h-6 w-24 bg-gray-200 rounded animate-pulse">&nbsp;</span>
