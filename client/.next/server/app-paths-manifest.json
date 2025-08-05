@@ -1,0 +1,8 @@
+{
+  "/api/tasks/categories/route": "app/api/tasks/categories/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/api/tasks/progress/route": "app/api/tasks/progress/route.js",
+  "/api/tasks/route": "app/api/tasks/route.js",
+  "/api/users/route": "app/api/users/route.js",
+  "/dashboard/page": "app/dashboard/page.js"
+}
