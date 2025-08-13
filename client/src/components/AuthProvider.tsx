@@ -26,13 +26,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const t = await getIdToken(firebaseUser, true);
           console.log('Token generated:', t ? 'Success' : 'Failed', t ? t.substring(0, 20) + '...' : 'No token');
           setToken(t);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('token', t);
+          }
         } catch (error) {
           console.error('Error getting token:', error);
           setToken(null);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('token');
+          }
         }
       } else {
         console.log('No user, clearing token');
         setToken(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+        }
       }
     });
     return () => unsubscribe();

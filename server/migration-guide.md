@@ -112,7 +112,7 @@ In your client application, update the base URL for API calls:
 
 ```javascript
 // Before
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:5000/api';
 
 // After
 const API_BASE = 'http://localhost:5000/api';

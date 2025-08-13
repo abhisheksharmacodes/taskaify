@@ -1,4 +1,4 @@
-// File: D:\Projects\__Completed\taskaify\src\app\layout.tsx
+// File: D:\Projects\__Completed\taskaify\client\src\app\layout.tsx
 import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

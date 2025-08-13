@@ -14,6 +14,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import Snackbar from "./Snackbar";
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
+import { apiFetch } from '../lib/utils';
 
 const taskSchema = z.object({
   content: z.string().min(1, 'Task cannot be empty').max(255, 'Task too long'),
@@ -238,19 +239,21 @@ function TaskDashboard() {
   };
 
   // Helper to fetch subtask counts for all tasks
-  const useSubtaskCounts = (tasks: Task[], token: string): { [key: number]: number } => {
-    const [counts, setCounts] = useState<{ [key: number]: number }>({});
+  const useSubtaskCounts = (tasks: Task[], token: string): { [key: string]: number } => {
+    const [counts, setCounts] = useState<{ [key: string]: number }>({});
     useEffect(() => {
       if (!token || !tasks.length) return;
       (async () => {
-        const newCounts: { [key: number]: number } = {};
+        const newCounts: { [key: string]: number } = {};
         await Promise.all(tasks.map(async (task: Task) => {
-          const res = await fetch(`/api/tasks/${task.id}/subtasks`, { headers: { Authorization: `Bearer ${token}` } });
+          const taskId = String((task as any)._id ?? (task as any).id);
+          if (!taskId) return;
+          const res = await apiFetch(`/api/tasks/${taskId}/subtasks`);
           if (res.ok) {
             const subtasks = await res.json();
-            newCounts[task.id] = subtasks.length;
+            newCounts[taskId] = subtasks.length;
           } else {
-            newCounts[task.id] = 0;
+            newCounts[taskId] = 0;
           }
         }));
         setCounts(newCounts);
@@ -262,7 +265,7 @@ function TaskDashboard() {
   // Fetch categories
   const fetchCategories = useCallback(() => {
     if (!token) return;
-    fetch('/api/tasks/categories', { headers: { Authorization: `Bearer ${token}` } })
+    apiFetch('/api/categories')
       .then(async res => {
         if (!res.ok) return [];
         const text = await res.text();
@@ -281,37 +284,17 @@ function TaskDashboard() {
     if (!token) return;
     const userName = localStorage.getItem('userName');
     if (userName) {
-      // First try to update existing user with PUT
-      fetch('/api/users', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: userName }),
-      }).then((res) => {
-        if (res.ok) {
-          // Remove the name from localStorage after successful update
-          localStorage.removeItem('userName');
-        } else if (res.status === 404) {
-          // User doesn't exist, create with POST
-          return fetch('/api/users', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ name: userName }),
-          });
-        }
-      }).then((res) => {
-        if (res && res.ok) {
-          // Remove the name from localStorage after successful creation
-          localStorage.removeItem('userName');
-        }
-      }).catch(err => {
-        console.error('Failed to create/update user with name:', err);
-      });
+      // Ensure user exists, then set name on profile
+      apiFetch('/api/users/profile', { headers: { Authorization: `Bearer ${token}` } })
+        .then(() => apiFetch('/api/users/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ name: userName }) }))
+        .then((res) => {
+          if (res && res.ok) {
+            localStorage.removeItem('userName');
+          }
+        })
+        .catch(err => {
+          console.error('Failed to create/update user with name:', err);
+        });
     }
   }, [token]);
 
@@ -330,7 +313,7 @@ function TaskDashboard() {
       url += `?category=${encodeURIComponent(selectedCategory)}`;
     }
     console.log('Fetching tasks from:', url);
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    apiFetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(async res => {
         console.log('Tasks API response status:', res.status);
         console.log('Tasks API response headers:', Object.fromEntries(res.headers.entries()));
@@ -360,29 +343,18 @@ function TaskDashboard() {
         console.error('Tasks fetch error:', err);
         showNotification({ message: 'Failed to fetch tasks: ' + (err.message || err), type: 'error' });
       });
-    console.log('Fetching progress...');
-    fetch('/api/tasks/progress', { headers: { Authorization: `Bearer ${token}` } })
-      .then(async res => {
-        console.log('Progress API response status:', res.status);
-        console.log('Progress API response headers:', Object.fromEntries(res.headers.entries()));
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error('Progress API error response:', errorText);
-          console.error('Progress API error status:', res.status);
-          console.error('Progress API error statusText:', res.statusText);
-          throw new Error(`API error (${res.status}): ${errorText || res.statusText}`);
-        }
-        const text = await res.text();
-        if (!text) {
-          throw new Error('Empty response from API');
-        }
-        return JSON.parse(text);
-      })
-      .then(setProgress)
-      .catch(err => {
-        console.error('Progress fetch error:', err);
-        showNotification({ message: 'Failed to fetch progress: ' + (err.message || err), type: 'error' });
+    // Compute progress client-side
+    try {
+      const completedCount = savedTasks.filter(t => t.completed).length;
+      const totalCount = savedTasks.length;
+      setProgress({
+        total: totalCount,
+        completed: completedCount,
+        progress: totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100)
       });
+    } catch (err: any) {
+      console.error('Progress compute error:', err);
+    }
   };
 
   useEffect(() => {
@@ -408,7 +380,7 @@ function TaskDashboard() {
     setSnackbar(null);
     setGeneratedTasks([]);
     try {
-      const res = await fetch('/api/generate-tasks', {
+      const res = await apiFetch('/api/generate-tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -471,7 +443,7 @@ function TaskDashboard() {
     }
     setGeneratedTaskLoading(prev => ({ ...prev, [index]: true }));
     try {
-      await fetch('/api/tasks', {
+      await apiFetch('/api/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -528,7 +500,7 @@ function TaskDashboard() {
       progress: totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100)
     });
     try {
-      const res = await fetch(`/api/tasks/${task.id}`, {
+      const res = await apiFetch(`/api/tasks/${task.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -564,7 +536,7 @@ function TaskDashboard() {
     setSavedTaskLoading(prev => ({ ...prev, [taskId]: 'delete' }));
     setSavedTasks(tasks => tasks.filter(t => t.id !== taskId));
     try {
-      const res = await fetch(`/api/tasks/${taskId}`, {
+      const res = await apiFetch(`/api/tasks/${taskId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -625,7 +597,7 @@ function TaskDashboard() {
     setEditTaskDueDate('');
     
     try {
-      await fetch(`/api/tasks/${task.id}`, {
+      await apiFetch(`/api/tasks/${task.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -688,7 +660,7 @@ function TaskDashboard() {
     setNewSubtaskInputs: React.Dispatch<React.SetStateAction<{ [taskId: number]: string }>>
   ) => {
     if (!content.trim()) return;
-    await fetch(`/api/tasks/${taskId}/subtasks`, {
+    await apiFetch(`/api/tasks/${taskId}/subtasks`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -715,7 +687,7 @@ function TaskDashboard() {
     setCreateCategoryLoading(true);
     try {
       // Persist the new category to the backend
-      await fetch('/api/tasks/categories', {
+      await apiFetch('/api/categories', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -917,7 +889,7 @@ function TaskDashboard() {
                             const dueDate = generatedTaskDueDates[i] ? new Date(generatedTaskDueDates[i]).toISOString() : undefined;
                             const result = taskSchema.safeParse({ content: task, category: taskCategory });
                             if (!result.success) return Promise.resolve({ error: result.error.errors[0].message });
-                            return fetch('/api/tasks', {
+                            return apiFetch('/api/tasks', {
                               method: 'POST',
                               headers: {
                                 'Content-Type': 'application/json',
@@ -962,7 +934,7 @@ function TaskDashboard() {
                 <ul className="space-y-2">
                   {generatedTasks.map((task: string, i: number) => (
                     <li
-                      key={i}
+                      key={`gen-${i}-${task}`}
                       className="
                         flex flex-col md:flex-row
                         items-stretch md:items-center
@@ -980,8 +952,8 @@ function TaskDashboard() {
                           <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map((cat, idx) => (
-                            <SelectItem key={idx} value={cat}>{cat}</SelectItem>
+                          {categories.map((cat) => (
+                            <SelectItem key={`gen-cat-${cat}`} value={cat}>{cat}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1016,8 +988,8 @@ function TaskDashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
-                      {usedCategories.map((cat, i) => (
-                        <SelectItem key={i} value={cat}>{cat}</SelectItem>
+                      {usedCategories.map((cat) => (
+                        <SelectItem key={`used-cat-${cat}`} value={cat}>{cat}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1065,9 +1037,11 @@ function TaskDashboard() {
                 {/* Mobile: All tasks in accordion */}
                 <div className="sm:hidden">
                   <ul className="space-y-2">
-                    {flatSavedTasks.map((task: Task) => (
-                      <Accordion type="single" collapsible key={task.id} className="space-y-2">
-                        <AccordionItem value={String(task.id)} className="bg-gray-50 rounded-lg shadow-sm">
+                    {flatSavedTasks.map((task: Task) => {
+                      const key = String((task as any)._id ?? task.id);
+                      return (
+                      <Accordion type="single" collapsible key={key} className="space-y-2">
+                        <AccordionItem value={key} className="bg-gray-50 rounded-lg shadow-sm">
                           <AccordionTrigger className="w-full px-4 no-underline hover:no-underline cursor-pointer">
                             <div className="group flex items-center gap-2 w-full mb-1">
                               {editTaskId === task.id ? (
@@ -1087,8 +1061,8 @@ function TaskDashboard() {
                                         <SelectValue placeholder="Category" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {categories.map((cat, idx) => (
-                                          <SelectItem key={idx} value={cat}>{cat}</SelectItem>
+                                         {categories.map((cat) => (
+                                           <SelectItem key={`edit-cat-${cat}`} value={cat}>{cat}</SelectItem>
                                         ))}
                                       </SelectContent>
                                     </Select>
@@ -1207,18 +1181,19 @@ function TaskDashboard() {
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
-                    ))}
+                    )})}
                   </ul>
                 </div>
                 {/* Desktop: original logic */}
                 <div className="hidden sm:block">
                   <ul className="space-y-2">
                     {flatSavedTasks.map((task: Task) => {
-                      const hasSubtasks = counts[task.id] > 0;
+                      const taskKey = String((task as any)._id ?? task.id);
+                      const hasSubtasks = counts[taskKey] > 0;
                       if (hasSubtasks) {
                         return (
-                          <Accordion type="multiple" key={task.id} className="space-y-2">
-                            <AccordionItem value={String(task.id)} className="bg-gray-50 rounded-lg shadow-sm">
+                          <Accordion type="multiple" key={taskKey} className="space-y-2">
+                            <AccordionItem value={taskKey} className="bg-gray-50 rounded-lg shadow-sm">
                               <AccordionTrigger className="w-full px-4 no-underline hover:no-underline cursor-pointer">
                                 <div className="group flex items-center gap-2 w-full">
                                   {editTaskId === task.id ? (
@@ -1238,8 +1213,8 @@ function TaskDashboard() {
                                             <SelectValue placeholder="Category" />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            {categories.map((cat, idx) => (
-                                              <SelectItem key={idx} value={cat}>{cat}</SelectItem>
+                                         {categories.map((cat) => (
+                                           <SelectItem key={`edit2-cat-${cat}`} value={cat}>{cat}</SelectItem>
                                             ))}
                                           </SelectContent>
                                         </Select>
@@ -1288,7 +1263,7 @@ function TaskDashboard() {
                                         />
                                         <span className={task.completed ? 'self-center line-through text-gray-400 font-normal' : 'self-center text-gray-900 font-normal'}>{task.content}</span>
                                         {/* Kebab menu for mobile */}
-                                        <div className="sm:hidden flex items-center ml-2 relative">
+                                       <div className="sm:hidden flex items-center ml-2 relative" key={`action-${taskKey}`}>
                                           <button
                                             className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             onClick={() => setMobileMenuOpen(task.id)}
