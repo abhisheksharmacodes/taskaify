@@ -82,13 +82,13 @@ function DashboardContent() {
   useEffect(() => {
     if (token && user) {
       setUserNameLoading(true);
-      fetch('/api/users', {
+      fetch('/api/users/profile', {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => res.json())
       .then(data => {
-        if (data.success && data.user && data.user.name) {
-          setUserName(data.user.name);
+        if (data && (data.name || (data.user && data.user.name))) {
+          setUserName(data.name || data.user.name);
         }
       })
       .catch(() => {

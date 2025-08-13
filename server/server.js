@@ -10,7 +10,8 @@ const { MongoClient, ObjectId } = require('mongodb');
 const admin = require('firebase-admin');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const isProd = process.env.NODE_ENV === 'production';
+const PORT = process.env.PORT || 5000;
 
 // ==================== DATABASE CONNECTION ====================
 let db = null;
@@ -202,11 +203,20 @@ const createCategoryValidation = [
 // ==================== API ENDPOINTS ====================
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+app.get('/health', async (req, res) => {
+  let dbStatus = 'unknown';
+  try {
+    const database = getDB();
+    await database.command({ ping: 1 });
+    dbStatus = 'ok';
+  } catch (_e) {
+    dbStatus = 'error';
+  }
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    db: dbStatus
   });
 });
 
@@ -235,7 +245,7 @@ app.get('/api/tasks', verifyFirebaseToken, async (req, res) => {
     res.json(tasks);
   } catch (error) {
     console.error('Error fetching tasks:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -271,7 +281,7 @@ app.post('/api/tasks', verifyFirebaseToken, createTaskValidation, async (req, re
     res.status(201).json(task);
   } catch (error) {
     console.error('Error creating task:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -301,7 +311,7 @@ app.get('/api/tasks/:id', verifyFirebaseToken, async (req, res) => {
     res.json(task);
   } catch (error) {
     console.error('Error fetching task:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -349,7 +359,7 @@ app.put('/api/tasks/:id', verifyFirebaseToken, updateTaskValidation, async (req,
     res.json(result.value);
   } catch (error) {
     console.error('Error updating task:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -379,7 +389,7 @@ app.delete('/api/tasks/:id', verifyFirebaseToken, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting task:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -414,7 +424,7 @@ app.get('/api/tasks/:taskId/subtasks', verifyFirebaseToken, async (req, res) => 
     res.json(subtasks);
   } catch (error) {
     console.error('Error fetching subtasks:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -466,7 +476,7 @@ app.post('/api/tasks/:taskId/subtasks', verifyFirebaseToken, createSubtaskValida
     res.status(201).json(subtask);
   } catch (error) {
     console.error('Error creating subtask:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -508,7 +518,7 @@ app.get('/api/tasks/:taskId/subtasks/:subtaskId', verifyFirebaseToken, async (re
     res.json(subtask);
   } catch (error) {
     console.error('Error fetching subtask:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -564,7 +574,7 @@ app.put('/api/tasks/:taskId/subtasks/:subtaskId', verifyFirebaseToken, updateSub
     res.json(result.value);
   } catch (error) {
     console.error('Error updating subtask:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -606,7 +616,7 @@ app.delete('/api/tasks/:taskId/subtasks/:subtaskId', verifyFirebaseToken, async 
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting subtask:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -625,7 +635,7 @@ app.get('/api/categories', verifyFirebaseToken, async (req, res) => {
     res.json(categoryNames);
   } catch (error) {
     console.error('Error fetching categories:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -664,7 +674,7 @@ app.post('/api/categories', verifyFirebaseToken, createCategoryValidation, async
     }
   } catch (error) {
     console.error('Error creating category:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -688,7 +698,7 @@ app.get('/api/users/profile', verifyFirebaseToken, async (req, res) => {
     res.json(userProfile);
   } catch (error) {
     console.error('Error fetching user profile:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -727,7 +737,7 @@ app.put('/api/users/profile', verifyFirebaseToken, async (req, res) => {
     res.json(userProfile);
   } catch (error) {
     console.error('Error updating user profile:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
   }
 });
 
@@ -803,19 +813,19 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);
-  
   if (err.name === 'ValidationError') {
-    return res.status(400).json({ 
-      error: 'Validation Error', 
-      details: Object.values(err.errors).map(e => e.message) 
+    return res.status(400).json({
+      error: 'Validation Error',
+      details: Object.values(err.errors).map(e => e.message)
     });
   }
-  
   if (err.name === 'CastError') {
     return res.status(400).json({ error: 'Invalid ID format' });
   }
-  
-  res.status(500).json({ error: 'Internal server error' });
+  res.status(500).json({
+    error: 'Internal server error',
+    details: isProd ? undefined : (err?.stack || err?.message || String(err))
+  });
 });
 
 // ==================== SERVER STARTUP ====================
