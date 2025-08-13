@@ -166,7 +166,7 @@ app.use(compression()); // Compress responses
 app.use(morgan('combined')); // Logging
 app.use(limiter); // Rate limiting
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env.CORS_ORIGIN || 'https://taskaify.vercel.app/',
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
