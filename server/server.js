@@ -165,10 +165,38 @@ app.use(helmet()); // Security headers
 app.use(compression()); // Compress responses
 app.use(morgan('combined')); // Logging
 app.use(limiter); // Rate limiting
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'https://taskaify.vercel.app/',
-  credentials: true
-}));
+// CORS configuration with explicit allowlist and Vercel preview support
+const normalizeOrigin = (o) => (o ? String(o).replace(/\/$/, '') : o);
+const staticAllowed = [
+  'http://localhost:3000',
+  'http://localhost:5000',
+  normalizeOrigin(process.env.CORS_ORIGIN),
+  ...((process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(s => normalizeOrigin(s.trim()))
+    .filter(Boolean)),
+  'https://taskaify.vercel.app',
+];
+const vercelPreviewRegex = /^https:\/\/taskaify(?:-[a-z0-9-]+)?\.vercel\.app$/i;
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser or same-origin requests
+    if (!origin) return callback(null, true);
+    const normalized = normalizeOrigin(origin);
+    if (staticAllowed.includes(normalized) || vercelPreviewRegex.test(normalized)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS not allowed for origin: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
