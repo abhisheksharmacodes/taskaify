@@ -333,7 +333,18 @@ function TaskDashboard() {
       .then(data => {
         console.log('Tasks data received:', data);
         setSavedTasks(data);
-        setAllTasks(data);  // all tasks (unfiltered reference)
+        // In parallel, fetch unfiltered tasks to maintain category options regardless of current filter
+        apiFetch('/api/tasks', { headers: { Authorization: `Bearer ${token}` } })
+          .then(async res => {
+            if (!res.ok) return [];
+            const text = await res.text();
+            if (!text) return [];
+            return JSON.parse(text);
+          })
+          .then((all) => {
+            setAllTasks(all);
+          })
+          .catch(() => {/* ignore */});
         setInitialLoading(false); // Hide skeleton after first fetch
         if (!showIntro)
           setShowIntro(!data.length)
@@ -637,18 +648,16 @@ function TaskDashboard() {
 
   const counts = useSubtaskCounts(flatSavedTasks, token ?? '');
 
-  // Calculate usedCategories from allTasks, memoized so it only changes when allTasks changes
+  // Keep usedCategories in sync with all tasks (unfiltered), so filter menu always shows all used categories
   useEffect(() => {
-    // Only set once when allTasks is first loaded and not empty
-    if (allTasks.length > 0 && usedCategories.length === 0) {
-      setUsedCategories(Array.from(
-        new Set(
-          allTasks
-            .map((t: Task) => t.category)
-            .filter((cat): cat is string => typeof cat === 'string')
-        )
-      ));
-    }
+    const uniqueCategories = Array.from(
+      new Set(
+        allTasks
+          .map((t: Task) => t.category)
+          .filter((cat): cat is string => typeof cat === 'string')
+      )
+    );
+    setUsedCategories(uniqueCategories);
     // eslint-disable-next-line
   }, [allTasks]);
 
