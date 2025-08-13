@@ -149,8 +149,8 @@ const getOrCreateUser = async (firebaseUser) => {
 // Initialize Firebase
 initializeFirebase();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB (ensure requests wait for readiness)
+const dbReady = connectDB();
 
 // ==================== MIDDLEWARE SETUP ====================
 // Rate limiting
@@ -199,6 +199,17 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Gate all routes on DB readiness
+app.use(async (req, res, next) => {
+  try {
+    await dbReady;
+    return next();
+  } catch (e) {
+    console.error('DB readiness error:', e);
+    return res.status(500).json({ error: 'Database not connected', details: e?.message || String(e) });
+  }
+});
 
 // ==================== VALIDATION SCHEMAS ====================
 const createTaskValidation = [
