@@ -3,25 +3,32 @@ import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Pencil1Icon, TrashIcon, CheckIcon, Cross2Icon, PlusIcon } from '@radix-ui/react-icons';
+import { getTaskId, isValidObjectId } from '../lib/utils';
 
 interface Subtask {
-  id: number;
+  _id?: string;
+  id?: number;
   content: string;
   completed: boolean;
 }
 
 interface TaskSubtasksProps {
-  taskId: number;
+  taskId: string;
   token: string;
 }
 
 export default function TaskSubtasks({ taskId, token }: TaskSubtasksProps) {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [newContent, setNewContent] = useState('');
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
-  const [editLoading, setEditLoading] = useState<{ [id: number]: boolean }>({});
+  const [editLoading, setEditLoading] = useState<{ [id: string]: boolean }>({});
   const [addLoading, setAddLoading] = useState(false);
+
+  // Validate taskId
+  if (!taskId || !isValidObjectId(taskId)) {
+    return <div className="text-red-600 text-sm">Invalid task ID</div>;
+  }
 
   const fetchSubtasks = async () => {
     try {
@@ -63,9 +70,10 @@ export default function TaskSubtasks({ taskId, token }: TaskSubtasksProps) {
   };
 
   const handleToggle = async (subtask: Subtask) => {
-    setEditLoading(l => ({ ...l, [subtask.id]: true }));
+    const subtaskId = String(subtask._id ?? subtask.id);
+    setEditLoading(l => ({ ...l, [subtaskId]: true }));
     try {
-      await fetch(`/api/tasks/${taskId}/subtasks/${subtask.id}`, {
+      await fetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -75,19 +83,21 @@ export default function TaskSubtasks({ taskId, token }: TaskSubtasksProps) {
       });
       fetchSubtasks();
     } finally {
-      setEditLoading(l => ({ ...l, [subtask.id]: false }));
+      setEditLoading(l => ({ ...l, [subtaskId]: false }));
     }
   };
 
   const handleEdit = (subtask: Subtask) => {
-    setEditId(subtask.id);
+    const subtaskId = String(subtask._id ?? subtask.id);
+    setEditId(subtaskId);
     setEditContent(subtask.content);
   };
 
   const handleSave = async (subtask: Subtask) => {
-    setEditLoading(l => ({ ...l, [subtask.id]: true }));
+    const subtaskId = String(subtask._id ?? subtask.id);
+    setEditLoading(l => ({ ...l, [subtaskId]: true }));
     try {
-      await fetch(`/api/tasks/${taskId}/subtasks/${subtask.id}`, {
+      await fetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -99,7 +109,7 @@ export default function TaskSubtasks({ taskId, token }: TaskSubtasksProps) {
       setEditContent('');
       fetchSubtasks();
     } finally {
-      setEditLoading(l => ({ ...l, [subtask.id]: false }));
+      setEditLoading(l => ({ ...l, [subtaskId]: false }));
     }
   };
 
@@ -109,15 +119,16 @@ export default function TaskSubtasks({ taskId, token }: TaskSubtasksProps) {
   };
 
   const handleDelete = async (subtask: Subtask) => {
-    setEditLoading(l => ({ ...l, [subtask.id]: true }));
+    const subtaskId = String(subtask._id ?? subtask.id);
+    setEditLoading(l => ({ ...l, [subtaskId]: true }));
     try {
-      await fetch(`/api/tasks/${taskId}/subtasks/${subtask.id}`, {
+      await fetch(`/api/tasks/${taskId}/subtasks/${subtaskId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchSubtasks();
     } finally {
-      setEditLoading(l => ({ ...l, [subtask.id]: false }));
+      setEditLoading(l => ({ ...l, [subtaskId]: false }));
     }
   };
 
@@ -136,42 +147,45 @@ export default function TaskSubtasks({ taskId, token }: TaskSubtasksProps) {
         </Button>
       </div>
       <ul className="space-y-1">
-        {subtasks.map(subtask => (
-          <li key={subtask.id} className="flex items-center gap-2 bg-gray-50 rounded p-2">
-            <Checkbox
-              checked={subtask.completed}
-              onCheckedChange={() => handleToggle(subtask)}
-              disabled={editLoading[subtask.id]}
-              className="cursor-pointer"
-            />
-            {editId === subtask.id ? (
-              <>
-                <Input
-                  value={editContent}
-                  onChange={e => setEditContent(e.target.value)}
-                  className="flex-1"
-                  onKeyDown={e => { if (e.key === 'Enter') handleSave(subtask); }}
-                />
-                <Button onClick={() => handleSave(subtask)} disabled={editLoading[subtask.id] || !editContent.trim()} className="p-2 cursor-pointer" variant="ghost" aria-label="Save Subtask">
-                  <CheckIcon className="w-4 h-4 text-green-600" />
-                </Button>
-                <Button onClick={handleCancel} disabled={editLoading[subtask.id]} className="p-2 cursor-pointer" variant="ghost" aria-label="Cancel Edit">
-                  <Cross2Icon className="w-4 h-4 text-gray-500" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <span className={subtask.completed ? 'line-through text-gray-400 flex-1' : 'flex-1 text-gray-900'}>{subtask.content}</span>
-                <Button onClick={() => handleEdit(subtask)} disabled={editLoading[subtask.id]} className="p-2 cursor-pointer" variant="ghost" aria-label="Edit Subtask">
-                  <Pencil1Icon className="w-4 h-4" />
-                </Button>
-                <Button onClick={() => handleDelete(subtask)} disabled={editLoading[subtask.id]} className="p-2 cursor-pointer" variant="ghost" aria-label="Delete Subtask">
-                  <TrashIcon className="w-4 h-4 text-red-500" />
-                </Button>
-              </>
-            )}
-          </li>
-        ))}
+        {subtasks.map(subtask => {
+          const subtaskKey = String(subtask._id ?? subtask.id);
+          return (
+            <li key={subtaskKey} className="flex items-center gap-2 bg-gray-50 rounded p-2">
+              <Checkbox
+                checked={subtask.completed}
+                onCheckedChange={() => handleToggle(subtask)}
+                disabled={editLoading[subtaskKey]}
+                className="cursor-pointer"
+              />
+              {editId === subtaskKey ? (
+                <>
+                  <Input
+                    value={editContent}
+                    onChange={e => setEditContent(e.target.value)}
+                    className="flex-1"
+                    onKeyDown={e => { if (e.key === 'Enter') handleSave(subtask); }}
+                  />
+                  <Button onClick={() => handleSave(subtask)} disabled={editLoading[subtaskKey] || !editContent.trim()} className="p-2 cursor-pointer" variant="ghost" aria-label="Save Subtask">
+                    <CheckIcon className="w-4 h-4 text-green-600" />
+                  </Button>
+                  <Button onClick={handleCancel} disabled={editLoading[subtaskKey]} className="p-2 cursor-pointer" variant="ghost" aria-label="Cancel Edit">
+                    <Cross2Icon className="w-4 h-4 text-gray-500" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className={subtask.completed ? 'line-through text-gray-400 flex-1' : 'flex-1 text-gray-900'}>{subtask.content}</span>
+                  <Button onClick={() => handleEdit(subtask)} disabled={editLoading[subtaskKey]} className="p-2 cursor-pointer" variant="ghost" aria-label="Edit Subtask">
+                    <Pencil1Icon className="w-4 h-4" />
+                  </Button>
+                  <Button onClick={() => handleDelete(subtask)} disabled={editLoading[subtaskKey]} className="p-2 cursor-pointer" variant="ghost" aria-label="Delete Subtask">
+                    <TrashIcon className="w-4 h-4 text-red-500" />
+                  </Button>
+                </>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

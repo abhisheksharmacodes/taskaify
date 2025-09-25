@@ -14,7 +14,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import Snackbar from "./Snackbar";
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
-import { apiFetch } from '../lib/utils';
+import { apiFetch, getTaskId, isValidObjectId } from '../lib/utils';
 
 const taskSchema = z.object({
   content: z.string().min(1, 'Task cannot be empty').max(255, 'Task too long'),
@@ -28,7 +28,8 @@ const updateTaskSchema = z.object({
 
 // Define a Task type at the top of the file
 type Task = {
-  id: number;
+  id?: number;
+  _id?: string;
   userId?: number;
   content: string;
   completed: boolean;
@@ -199,11 +200,11 @@ function TaskDashboard() {
   const [progress, setProgress] = useState({ total: 0, completed: 0, progress: 0 });
   const [generateLoading, setGenerateLoading] = useState(false);
   const [generatedTaskLoading, setGeneratedTaskLoading] = useState<{ [key: number]: boolean }>({});
-  const [savedTaskLoading, setSavedTaskLoading] = useState<{ [key: number]: string | null }>({});
+  const [savedTaskLoading, setSavedTaskLoading] = useState<{ [key: string]: string | null }>({});
   const [snackbar, setSnackbar] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   // Edit state
-  const [editTaskId, setEditTaskId] = useState<number | null>(null);
+  const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const [editTaskContent, setEditTaskContent] = useState('');
   const [editTaskCategory, setEditTaskCategory] = useState('');
   // State for per-generated-task category
@@ -216,11 +217,11 @@ function TaskDashboard() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [createCategoryLoading, setCreateCategoryLoading] = useState(false);
   // Add this state near the other useState hooks
-  const [newSubtaskInputs, setNewSubtaskInputs] = useState<{ [taskId: number]: string }>({});
+  const [newSubtaskInputs, setNewSubtaskInputs] = useState<{ [taskId: string]: string }>({});
   const [initialLoading, setInitialLoading] = useState(true);
   const isFirstLoad = useRef(true);
   const [saveAllLoading, setSaveAllLoading] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<string | null>(null);
   // Add state to store all tasks
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [catFetched, setCatFetched] = useState(false)
@@ -246,8 +247,8 @@ function TaskDashboard() {
       (async () => {
         const newCounts: { [key: string]: number } = {};
         await Promise.all(tasks.map(async (task: Task) => {
-          const taskId = String((task as any)._id ?? (task as any).id);
-          if (!taskId) return;
+          const taskId = getTaskId(task);
+          if (!taskId) return; // Skip tasks with invalid IDs
           const res = await apiFetch(`/api/tasks/${taskId}/subtasks`);
           if (res.ok) {
             const subtasks = await res.json();
@@ -497,10 +498,22 @@ function TaskDashboard() {
   // Toggle complete/incomplete (optimistic UI)
   const handleToggleComplete = async (task: Task) => {
     if (!token) return;
-    setSavedTaskLoading(prev => ({ ...prev, [task.id]: 'toggle' }));
+    
+    const taskId = getTaskId(task);
+    if (!taskId) {
+      setSnackbar({ message: 'Invalid task ID. Please refresh the page.', type: 'error' });
+      setSnackbarVisible(true);
+      return;
+    }
+    
+    const taskKey = taskId;
+    setSavedTaskLoading(prev => ({ ...prev, [taskKey]: 'toggle' }));
     // Optimistically update task completion and progress
     const prevTasks = [...savedTasks];
-    const updatedTasks = savedTasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t);
+    const updatedTasks = savedTasks.map(t => {
+      const currentTaskId = getTaskId(t);
+      return currentTaskId === taskId ? { ...t, completed: !t.completed } : t;
+    });
     setSavedTasks(updatedTasks);
     // Optimistically update progress bar and x/x text
     const completedCount = updatedTasks.filter(t => t.completed).length;
@@ -511,7 +524,7 @@ function TaskDashboard() {
       progress: totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100)
     });
     try {
-      const res = await apiFetch(`/api/tasks/${task.id}`, {
+      const res = await apiFetch(`/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -535,17 +548,29 @@ function TaskDashboard() {
       setSnackbar({ message: e.message || 'Failed to update task', type: 'error' });
       setSnackbarVisible(true);
     } finally {
-      setSavedTaskLoading(prev => ({ ...prev, [task.id]: null }));
+      setSavedTaskLoading(prev => ({ ...prev, [taskKey]: null }));
     }
   };
 
   // Delete a task (optimistic UI)
-  const handleDeleteTask = async (taskId: number) => {
+  const handleDeleteTask = async (task: Task) => {
     if (!token) return;
+    
+    const taskId = getTaskId(task);
+    if (!taskId) {
+      setSnackbar({ message: 'Invalid task ID. Please refresh the page.', type: 'error' });
+      setSnackbarVisible(true);
+      return;
+    }
+    
+    const taskKey = taskId;
     // Optimistically remove from UI
     const prevTasks = savedTasks;
-    setSavedTaskLoading(prev => ({ ...prev, [taskId]: 'delete' }));
-    setSavedTasks(tasks => tasks.filter(t => t.id !== taskId));
+    setSavedTaskLoading(prev => ({ ...prev, [taskKey]: 'delete' }));
+    setSavedTasks(tasks => tasks.filter(t => {
+      const currentTaskId = getTaskId(t);
+      return currentTaskId !== taskId;
+    }));
     try {
       const res = await apiFetch(`/api/tasks/${taskId}`, {
         method: 'DELETE',
@@ -564,13 +589,20 @@ function TaskDashboard() {
       setSnackbar({ message: e.message || 'Failed to delete task', type: 'error' });
       setSnackbarVisible(true);
     } finally {
-      setSavedTaskLoading(prev => ({ ...prev, [taskId]: null }));
+      setSavedTaskLoading(prev => ({ ...prev, [taskKey]: null }));
     }
   };
 
   // Start editing a task
   const handleStartEditTask = (task: Task) => {
-    setEditTaskId(task.id);
+    const taskId = getTaskId(task);
+    if (!taskId) {
+      setSnackbar({ message: 'Invalid task ID. Please refresh the page.', type: 'error' });
+      setSnackbarVisible(true);
+      return;
+    }
+    
+    setEditTaskId(taskId);
     setEditTaskContent(task.content);
     setEditTaskCategory(task.category || '');
     setEditTaskDueDate(task.dueDate ? task.dueDate.slice(0, 10) : '');
@@ -579,6 +611,14 @@ function TaskDashboard() {
   // Save edited task
   const handleSaveEditTask = async (task: Task) => {
     if (!token) return;
+    
+    const taskId = getTaskId(task);
+    if (!taskId) {
+      setSnackbar({ message: 'Invalid task ID. Please refresh the page.', type: 'error' });
+      setSnackbarVisible(true);
+      return;
+    }
+    
     const result = updateTaskSchema.safeParse({ content: editTaskContent, category: editTaskCategory, dueDate: editTaskDueDate ? new Date(editTaskDueDate).toISOString() : null });
     if (!result.success) {
       setSnackbar({ message: result.error.errors[0].message, type: 'error' });
@@ -598,7 +638,10 @@ function TaskDashboard() {
       dueDate: editTaskDueDate ? new Date(editTaskDueDate).toISOString() : undefined,
     };
     setSavedTasks(prevTasks => 
-      prevTasks.map(t => t.id === task.id ? updatedTask : t)
+      prevTasks.map(t => {
+        const currentTaskId = getTaskId(t);
+        return currentTaskId === taskId ? updatedTask : t;
+      })
     );
     
     // Exit edit mode immediately
@@ -608,7 +651,7 @@ function TaskDashboard() {
     setEditTaskDueDate('');
     
     try {
-      await apiFetch(`/api/tasks/${task.id}`, {
+      await apiFetch(`/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -621,10 +664,13 @@ function TaskDashboard() {
     } catch (e: any) {
       // Revert optimistic update on error
       setSavedTasks(prevTasks => 
-        prevTasks.map(t => t.id === task.id ? task : t)
+        prevTasks.map(t => {
+          const currentTaskId = getTaskId(t);
+          return currentTaskId === taskId ? task : t;
+        })
       );
       // Re-enter edit mode on error
-      setEditTaskId(task.id);
+      setEditTaskId(taskId);
       setEditTaskContent(editTaskContent);
       setEditTaskCategory(editTaskCategory);
       setEditTaskDueDate(editTaskDueDate);
@@ -641,10 +687,10 @@ function TaskDashboard() {
     setEditTaskDueDate('');
   };
 
-  // Defensive flatten for savedTasks in case of nested arrays
+  // Defensive flatten for savedTasks in case of nested arrays and filter out invalid tasks
   const flatSavedTasks = Array.isArray(savedTasks) && typeof savedTasks[0] === 'object' && !Array.isArray(savedTasks[0])
-    ? savedTasks
-    : savedTasks.flat ? savedTasks.flat() : savedTasks;
+    ? savedTasks.filter(task => getTaskId(task) !== null)  // Filter out tasks with invalid IDs
+    : savedTasks.flat ? savedTasks.flat().filter(task => getTaskId(task) !== null) : savedTasks.filter(task => getTaskId(task) !== null);
 
   const counts = useSubtaskCounts(flatSavedTasks, token ?? '');
 
@@ -663,12 +709,13 @@ function TaskDashboard() {
 
   // Inline handler for adding a subtask
   const handleAddSubtask = async (
-    taskId: number,
+    task: Task,
     token: string,
     content: string,
-    setNewSubtaskInputs: React.Dispatch<React.SetStateAction<{ [taskId: number]: string }>>
+    setNewSubtaskInputs: React.Dispatch<React.SetStateAction<{ [taskId: string]: string }>>
   ) => {
     if (!content.trim()) return;
+    const taskId = String(task._id ?? task.id);
     await apiFetch(`/api/tasks/${taskId}/subtasks`, {
       method: 'POST',
       headers: {
@@ -1048,20 +1095,22 @@ function TaskDashboard() {
                 <div className="sm:hidden">
                   <ul className="space-y-2">
                     {flatSavedTasks.map((task: Task) => {
-                      const key = String((task as any)._id ?? task.id);
+                      const taskId = getTaskId(task);
+                      if (!taskId) return null; // Skip tasks with invalid IDs
+                      
                       return (
-                      <Accordion type="single" collapsible key={key} className="space-y-2">
-                        <AccordionItem value={key} className="bg-gray-50 rounded-lg shadow-sm">
+                      <Accordion type="single" collapsible key={taskId} className="space-y-2">
+                        <AccordionItem value={taskId} className="bg-gray-50 rounded-lg shadow-sm">
                           <AccordionTrigger className="w-full px-4 no-underline hover:no-underline cursor-pointer">
                             <div className="group flex items-center gap-2 w-full mb-1">
-                              {editTaskId === task.id ? (
+                              {editTaskId === taskId ? (
                                 <div className="flex items-center pr-3 sm:pr-0 justify-center flex-col sm:flex-row gap-2 w-full">
                                   <div className="flex flex-col sm:flex-row gap-2 w-full">
                                     <Input
                                       className="flex-1 w-full font-normal py-2"
                                       value={editTaskContent}
                                       onChange={e => setEditTaskContent(e.target.value)}
-                                      key={`edit-input-${task.id}`}
+                                      key={`edit-input-${taskId}`}
                                     />
                                     <Select
                                       value={editTaskCategory || ''}
@@ -1088,11 +1137,11 @@ function TaskDashboard() {
                                     <Button
                                       onClick={() => handleSaveEditTask(task)}
                                       className="w-full sm:w-auto p-2 cursor-pointer"
-                                      disabled={savedTaskLoading[task.id] === 'edit' || !editTaskContent.trim()}
+                                      disabled={savedTaskLoading[taskId] === 'edit' || !editTaskContent.trim()}
                                       variant="ghost"
                                       aria-label="Save Task"
                                     >
-                                      {savedTaskLoading[task.id] === 'edit' ? (
+                                      {savedTaskLoading[taskId] === 'edit' ? (
                                         <span className="text-xs">...</span>
                                       ) : (
                                         <CheckIcon className="w-4 h-4 text-green-600 cursor-pointer" />
@@ -1101,7 +1150,7 @@ function TaskDashboard() {
                                     <Button
                                       onClick={handleCancelEditTask}
                                       className="w-full sm:w-auto p-2 cursor-pointer"
-                                      disabled={savedTaskLoading[task.id] === 'edit'}
+                                      disabled={savedTaskLoading[taskId] === 'edit'}
                                       variant="ghost"
                                       aria-label="Cancel Edit"
                                     >
@@ -1116,9 +1165,9 @@ function TaskDashboard() {
                                     <Checkbox
                                       checked={task.completed}
                                       onCheckedChange={() => handleToggleComplete(task)}
-                                      disabled={savedTaskLoading[task.id] === 'toggle'}
+                                      disabled={savedTaskLoading[taskId] === 'toggle'}
                                       className="mr-2 cursor-pointer self-center"
-                                      id="task-checkbox"
+                                      id={`task-checkbox-${taskId}`}
                                     />
                                     <div className='flex flex-col items-left'>
                                       <span className={task.completed ? 'text-left line-through text-gray-400 font-normal' : 'self-center text-left text-gray-900 font-normal'}>{task.content}</span>
@@ -1133,12 +1182,12 @@ function TaskDashboard() {
                                   <div className="sm:hidden flex items-center ml-1 mr-1 relative">
                                     <button
                                       className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                      onClick={() => setMobileMenuOpen(task.id)}
+                                      onClick={() => setMobileMenuOpen(taskId)}
                                       aria-label="Open actions menu"
                                     >
                                       <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5" /><circle cx="10" cy="10" r="1.5" /><circle cx="10" cy="16" r="1.5" /></svg>
                                     </button>
-                                    {mobileMenuOpen === task.id && (
+                                    {mobileMenuOpen === taskId && (
                                       <div className="absolute right-0 z-10 mt-2 w-28 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                                         <button
                                           onClick={() => { handleStartEditTask(task); setMobileMenuOpen(null); }}
@@ -1147,7 +1196,7 @@ function TaskDashboard() {
                                           Edit
                                         </button>
                                         <button
-                                          onClick={() => { handleDeleteTask(task.id); setMobileMenuOpen(null); }}
+                                          onClick={() => { handleDeleteTask(task); setMobileMenuOpen(null); }}
                                           className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                                         >
                                           Delete
@@ -1160,20 +1209,20 @@ function TaskDashboard() {
                                     <Button
                                       onClick={() => handleStartEditTask(task)}
                                       className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                                      disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
+                                      disabled={savedTaskLoading[taskId] === 'edit' || savedTaskLoading[taskId] === 'toggle'}
                                       variant="ghost"
                                       aria-label="Edit Task"
                                     >
                                       <Pencil1Icon className="w-4 h-4 cursor-pointer" />
                                     </Button>
                                     <Button
-                                      onClick={() => handleDeleteTask(task.id)}
+                                      onClick={() => handleDeleteTask(task)}
                                       className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                                      disabled={savedTaskLoading[task.id] === 'delete'}
+                                      disabled={savedTaskLoading[taskId] === 'delete'}
                                       variant="ghost"
                                       aria-label="Delete Task"
                                     >
-                                      {savedTaskLoading[task.id] === 'delete' ? (
+                                      {savedTaskLoading[taskId] === 'delete' ? (
                                         <span className="text-xs">...</span>
                                       ) : (
                                         <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
@@ -1185,10 +1234,11 @@ function TaskDashboard() {
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="px-4 pb-2">
-                            {task.id && token && (
-                              <TaskSubtasks taskId={task.id} token={token} />
+                            {taskId && token && (
+                              <TaskSubtasks taskId={taskId} token={token} />
                             )}
                           </AccordionContent>
+
                         </AccordionItem>
                       </Accordion>
                     )})}
@@ -1198,22 +1248,24 @@ function TaskDashboard() {
                 <div className="hidden sm:block">
                   <ul className="space-y-2">
                     {flatSavedTasks.map((task: Task) => {
-                      const taskKey = String((task as any)._id ?? task.id);
-                      const hasSubtasks = counts[taskKey] > 0;
+                      const taskId = getTaskId(task);
+                      if (!taskId) return null; // Skip tasks with invalid IDs
+                      
+                      const hasSubtasks = counts[taskId] > 0;
                       if (hasSubtasks) {
                         return (
-                          <Accordion type="multiple" key={taskKey} className="space-y-2">
-                            <AccordionItem value={taskKey} className="bg-gray-50 rounded-lg shadow-sm">
+                          <Accordion type="multiple" key={taskId} className="space-y-2">
+                            <AccordionItem value={taskId} className="bg-gray-50 rounded-lg shadow-sm">
                               <AccordionTrigger className="w-full px-4 no-underline hover:no-underline cursor-pointer">
                                 <div className="group flex items-center gap-2 w-full">
-                                  {editTaskId === task.id ? (
+                                  {editTaskId === taskId ? (
                                     <div className="flex items-center pr-3 sm:pr-0 justify-center flex-col sm:flex-row gap-2 w-full">
                                       <div className="flex flex-col sm:flex-row gap-2 w-full">
                                         <Input
                                           className="flex-1 w-full font-normal"
                                           value={editTaskContent}
                                           onChange={e => setEditTaskContent(e.target.value)}
-                                          key={`edit-input-${task.id}`}
+                                          key={`edit-input-${String(task._id ?? task.id)}`}
                                         />
                                         <Select
                                           value={editTaskCategory || ''}
@@ -1241,11 +1293,11 @@ function TaskDashboard() {
                                         <Button
                                           onClick={() => handleSaveEditTask(task)}
                                           className="w-full sm:w-auto p-2 cursor-pointer"
-                                          disabled={savedTaskLoading[task.id] === 'edit' || !editTaskContent.trim()}
+                                          disabled={savedTaskLoading[String(task._id ?? task.id)] === 'edit' || !editTaskContent.trim()}
                                           variant="ghost"
                                           aria-label="Save Task"
                                         >
-                                          {savedTaskLoading[task.id] === 'edit' ? (
+                                          {savedTaskLoading[String(task._id ?? task.id)] === 'edit' ? (
                                             <span className="text-xs">...</span>
                                           ) : (
                                             <CheckIcon className="w-4 h-4 text-green-600 cursor-pointer" />
@@ -1254,7 +1306,7 @@ function TaskDashboard() {
                                         <Button
                                           onClick={handleCancelEditTask}
                                           className="w-full sm:w-auto p-2 cursor-pointer"
-                                          disabled={savedTaskLoading[task.id] === 'edit'}
+                                          disabled={savedTaskLoading[String(task._id ?? task.id)] === 'edit'}
                                           variant="ghost"
                                           aria-label="Cancel Edit"
                                         >
@@ -1268,20 +1320,21 @@ function TaskDashboard() {
                                         <Checkbox
                                           checked={task.completed}
                                           onCheckedChange={() => handleToggleComplete(task)}
-                                          disabled={savedTaskLoading[task.id] === 'toggle'}
+                                          disabled={savedTaskLoading[String(task._id ?? task.id)] === 'toggle'}
                                           className="mr-2 cursor-pointer self-center"
+                                          id={`task-checkbox-desktop-${String(task._id ?? task.id)}`}
                                         />
                                         <span className={task.completed ? 'self-center line-through text-gray-400 font-normal' : 'self-center text-gray-900 font-normal'}>{task.content}</span>
                                         {/* Kebab menu for mobile */}
-                                       <div className="sm:hidden flex items-center ml-2 relative" key={`action-${taskKey}`}>
+                                       <div className="sm:hidden flex items-center ml-2 relative" key={`action-${taskId}`}>
                                           <button
                                             className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            onClick={() => setMobileMenuOpen(task.id)}
+                                            onClick={() => setMobileMenuOpen(String(task._id ?? task.id))}
                                             aria-label="Open actions menu"
                                           >
                                             <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5" /><circle cx="10" cy="10" r="1.5" /><circle cx="10" cy="16" r="1.5" /></svg>
                                           </button>
-                                          {mobileMenuOpen === task.id && (
+                                          {mobileMenuOpen === String(task._id ?? task.id) && (
                                             <div className="absolute right-0 z-10 mt-2 w-28 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                                               <button
                                                 onClick={() => { handleStartEditTask(task); setMobileMenuOpen(null); }}
@@ -1290,7 +1343,7 @@ function TaskDashboard() {
                                                 Edit
                                               </button>
                                               <button
-                                                onClick={() => { handleDeleteTask(task.id); setMobileMenuOpen(null); }}
+                                                onClick={() => { handleDeleteTask(task); setMobileMenuOpen(null); }}
                                                 className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                                               >
                                                 Delete
@@ -1303,20 +1356,20 @@ function TaskDashboard() {
                                           <Button
                                             onClick={() => handleStartEditTask(task)}
                                             className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                                            disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
+                                            disabled={savedTaskLoading[String(task._id ?? task.id)] === 'edit' || savedTaskLoading[String(task._id ?? task.id)] === 'toggle'}
                                             variant="ghost"
                                             aria-label="Edit Task"
                                           >
                                             <Pencil1Icon className="w-4 h-4 cursor-pointer" />
                                           </Button>
                                           <Button
-                                            onClick={() => handleDeleteTask(task.id)}
+                                            onClick={() => handleDeleteTask(task)}
                                             className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                                            disabled={savedTaskLoading[task.id] === 'delete'}
+                                            disabled={savedTaskLoading[String(task._id ?? task.id)] === 'delete'}
                                             variant="ghost"
                                             aria-label="Delete Task"
                                           >
-                                            {savedTaskLoading[task.id] === 'delete' ? (
+                                            {savedTaskLoading[String(task._id ?? task.id)] === 'delete' ? (
                                               <span className="text-xs">...</span>
                                             ) : (
                                               <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
@@ -1328,30 +1381,32 @@ function TaskDashboard() {
                                       {task.dueDate && <span className="ml-2 mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs self-center">{formatDateForDisplay(task.dueDate)}</span>}
                                     </div>
                                   )}
+
                                 </div>
                               </AccordionTrigger>
                               <AccordionContent className="px-4 pb-2">
-                                {task.id && token && (
-                                  <TaskSubtasks taskId={task.id} token={token} />
+                                {String(task._id ?? task.id) && token && (
+                                  <TaskSubtasks taskId={String(task._id ?? task.id)} token={token} />
                                 )}
                               </AccordionContent>
+
                             </AccordionItem>
                           </Accordion>
                         );
                       } else {
                         // No subtasks: render as normal list item with inline add subtask field
                         return (
-                          <li key={task.id} className="group bg-gray-50 rounded-lg p-2 px-4 shadow-sm transition-all duration-200 hover:shadow-md">
+                          <li key={String(task._id ?? task.id)} className="group bg-gray-50 rounded-lg p-2 px-4 shadow-sm transition-all duration-200 hover:shadow-md">
                             <div className="flex items-center w-full">
                               <div className='flex-1 gap-2 flex items-center'>
-                                {editTaskId === task.id ? (
+                                {editTaskId === String(task._id ?? task.id) ? (
                                   <div className="flex flex-col sm:flex-row gap-2 w-full">
                                     <div className="flex-1 flex flex-col sm:flex-row gap-2 w-full">
                                       <Input
                                         className="flex-1 w-auto font-normal"
                                         value={editTaskContent}
                                         onChange={e => setEditTaskContent(e.target.value)}
-                                        key={`edit-input-${task.id}`}
+                                        key={`edit-input-${String(task._id ?? task.id)}`}
                                       />
                                       <Select
                                         value={editTaskCategory || ''}
@@ -1371,7 +1426,6 @@ function TaskDashboard() {
                                           value={editTaskDueDate}
                                           onChange={(date: string) => setEditTaskDueDate(date)}
                                           minDate={todayStr}
-                                          className="bg-red-500"
                                         />
                                       </div>
                                     </div>
@@ -1379,11 +1433,11 @@ function TaskDashboard() {
                                       <Button
                                         onClick={() => handleSaveEditTask(task)}
                                         className="w-full sm:w-auto p-2 cursor-pointer"
-                                        disabled={savedTaskLoading[task.id] === 'edit' || !editTaskContent.trim()}
+                                        disabled={savedTaskLoading[String(task._id ?? task.id)] === 'edit' || !editTaskContent.trim()}
                                         variant="ghost"
                                         aria-label="Save Task"
                                       >
-                                        {savedTaskLoading[task.id] === 'edit' ? (
+                                        {savedTaskLoading[String(task._id ?? task.id)] === 'edit' ? (
                                           <span className="text-xs">...</span>
                                         ) : (
                                           <CheckIcon className="w-4 h-4 text-green-600 cursor-pointer" />
@@ -1392,7 +1446,7 @@ function TaskDashboard() {
                                       <Button
                                         onClick={handleCancelEditTask}
                                         className="w-full sm:w-auto p-2 cursor-pointer"
-                                        disabled={savedTaskLoading[task.id] === 'edit'}
+                                        disabled={savedTaskLoading[String(task._id ?? task.id)] === 'edit'}
                                         variant="ghost"
                                         aria-label="Cancel Edit"
                                       >
@@ -1405,20 +1459,21 @@ function TaskDashboard() {
                                     <Checkbox
                                       checked={task.completed}
                                       onCheckedChange={() => handleToggleComplete(task)}
-                                      disabled={savedTaskLoading[task.id] === 'toggle'}
+                                      disabled={savedTaskLoading[String(task._id ?? task.id)] === 'toggle'}
                                       className="mr-2 cursor-pointer self-center"
+                                      id={`task-checkbox-no-subtasks-${String(task._id ?? task.id)}`}
                                     />
                                     <span className={task.completed ? 'line-through self-center text-gray-400 font-normal' : 'self-center text-gray-900 font-normal'}>{task.content}</span>
                                     {/* Kebab menu for mobile */}
                                     <div className="sm:hidden flex items-center ml-2 relative">
                                       <button
                                         className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        onClick={() => setMobileMenuOpen(task.id)}
+                                        onClick={() => setMobileMenuOpen(String(task._id ?? task.id))}
                                         aria-label="Open actions menu"
                                       >
                                         <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5" /><circle cx="10" cy="10" r="1.5" /><circle cx="10" cy="16" r="1.5" /></svg>
                                       </button>
-                                      {mobileMenuOpen === task.id && (
+                                      {mobileMenuOpen === String(task._id ?? task.id) && (
                                         <div className="absolute right-0 z-10 mt-2 w-28 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                                           <button
                                             onClick={() => { handleStartEditTask(task); setMobileMenuOpen(null); }}
@@ -1427,7 +1482,7 @@ function TaskDashboard() {
                                             Edit
                                           </button>
                                           <button
-                                            onClick={() => { handleDeleteTask(task.id); setMobileMenuOpen(null); }}
+                                            onClick={() => { handleDeleteTask(task); setMobileMenuOpen(null); }}
                                             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                                           >
                                             Delete
@@ -1440,20 +1495,20 @@ function TaskDashboard() {
                                       <Button
                                         onClick={() => handleStartEditTask(task)}
                                         className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                                        disabled={savedTaskLoading[task.id] === 'edit' || savedTaskLoading[task.id] === 'toggle'}
+                                        disabled={savedTaskLoading[String(task._id ?? task.id)] === 'edit' || savedTaskLoading[String(task._id ?? task.id)] === 'toggle'}
                                         variant="ghost"
                                         aria-label="Edit Task"
                                       >
                                         <Pencil1Icon className="w-4 h-4 cursor-pointer" />
                                       </Button>
                                       <Button
-                                        onClick={() => handleDeleteTask(task.id)}
+                                        onClick={() => handleDeleteTask(task)}
                                         className="p-2 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                                        disabled={savedTaskLoading[task.id] === 'delete'}
+                                        disabled={savedTaskLoading[String(task._id ?? task.id)] === 'delete'}
                                         variant="ghost"
                                         aria-label="Delete Task"
                                       >
-                                        {savedTaskLoading[task.id] === 'delete' ? (
+                                        {savedTaskLoading[String(task._id ?? task.id)] === 'delete' ? (
                                           <span className="text-xs">...</span>
                                         ) : (
                                           <TrashIcon className="w-4 h-4 text-red-500 cursor-pointer" />
@@ -1466,19 +1521,19 @@ function TaskDashboard() {
                               </div>
                               {task.category && <span className={`ml-2 px-2 py-1 rounded bg-green-100 text-green-800 text-xs self-center ${task.dueDate ? "" : 'mr-2 self-center'}`}>{task.category}</span>}
                               {task.dueDate && <span className="ml-2 mr-2 px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs self-center">{formatDateForDisplay(task.dueDate)}</span>}
-                              {editTaskId !== task.id && <div className="flex items-center gap-1 ml-2">
+                              {editTaskId !== String(task._id ?? task.id) && <div className="flex items-center gap-1 ml-2">
                                 <Input
-                                  value={newSubtaskInputs[task.id] || ''}
+                                  value={newSubtaskInputs[String(task._id ?? task.id)] || ''}
                                   onChange={e => {
                                     const val = e.target.value;
-                                    setNewSubtaskInputs(prev => ({ ...prev, [task.id]: val }));
+                                    setNewSubtaskInputs(prev => ({ ...prev, [String(task._id ?? task.id)]: val }));
                                   }}
                                   placeholder="Add subtask"
                                   className="w-32"
                                 />
                                 <Button
-                                  onClick={() => task.id && token && handleAddSubtask(task.id, token, newSubtaskInputs[task.id], setNewSubtaskInputs)}
-                                  disabled={!newSubtaskInputs[task.id] || !newSubtaskInputs[task.id].trim()}
+                                  onClick={() => token && handleAddSubtask(task, token, newSubtaskInputs[String(task._id ?? task.id)], setNewSubtaskInputs)}
+                                  disabled={!newSubtaskInputs[String(task._id ?? task.id)] || !newSubtaskInputs[String(task._id ?? task.id)].trim()}
                                   className="p-2 cursor-pointer"
                                   variant="ghost"
                                   aria-label="Add Subtask"
@@ -1486,6 +1541,7 @@ function TaskDashboard() {
                                   <PlusIcon className="w-4 h-4" />
                                 </Button>
                               </div>}
+
                             </div>
                           </li>
                         );

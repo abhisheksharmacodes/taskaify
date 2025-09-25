@@ -211,6 +211,19 @@ app.use(async (req, res, next) => {
   }
 });
 
+// ==================== UTILITY FUNCTIONS ====================
+// Helper function to validate and convert ObjectId
+const validateObjectId = (id) => {
+  if (!id || typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) {
+    return null;
+  }
+  try {
+    return new ObjectId(id);
+  } catch (error) {
+    return null;
+  }
+};
+
 // ==================== VALIDATION SCHEMAS ====================
 const createTaskValidation = [
   body('content').trim().isLength({ min: 1, max: 255 }).withMessage('Content must be between 1 and 255 characters'),
@@ -331,10 +344,8 @@ app.get('/api/tasks/:id', verifyFirebaseToken, async (req, res) => {
     const db = getDB();
     const tasksCollection = db.collection('tasks');
     
-    let taskId;
-    try {
-      taskId = new ObjectId(req.params.id);
-    } catch (error) {
+    const taskId = validateObjectId(req.params.id);
+    if (!taskId) {
       return res.status(400).json({ error: 'Invalid task ID format' });
     }
     
@@ -370,10 +381,8 @@ app.put('/api/tasks/:id', verifyFirebaseToken, updateTaskValidation, async (req,
     const db = getDB();
     const tasksCollection = db.collection('tasks');
     
-    let taskId;
-    try {
-      taskId = new ObjectId(req.params.id);
-    } catch (error) {
+    const taskId = validateObjectId(req.params.id);
+    if (!taskId) {
       return res.status(400).json({ error: 'Invalid task ID format' });
     }
     
@@ -409,10 +418,8 @@ app.delete('/api/tasks/:id', verifyFirebaseToken, async (req, res) => {
     const db = getDB();
     const tasksCollection = db.collection('tasks');
     
-    let taskId;
-    try {
-      taskId = new ObjectId(req.params.id);
-    } catch (error) {
+    const taskId = validateObjectId(req.params.id);
+    if (!taskId) {
       return res.status(400).json({ error: 'Invalid task ID format' });
     }
     
@@ -442,10 +449,8 @@ app.get('/api/tasks/:taskId/subtasks', verifyFirebaseToken, async (req, res) => 
     const tasksCollection = db.collection('tasks');
     const subtasksCollection = db.collection('subtasks');
     
-    let taskId;
-    try {
-      taskId = new ObjectId(req.params.taskId);
-    } catch (error) {
+    const taskId = validateObjectId(req.params.taskId);
+    if (!taskId) {
       return res.status(400).json({ error: 'Invalid task ID format' });
     }
     

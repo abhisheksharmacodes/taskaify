@@ -5,6 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Utility to validate MongoDB ObjectId format
+export function isValidObjectId(id: string): boolean {
+  return typeof id === 'string' && /^[0-9a-fA-F]{24}$/.test(id);
+}
+
+// Safe task ID extraction with validation
+export function getTaskId(task: any): string | null {
+  const taskId = String(task._id ?? task.id ?? '');
+  return taskId && isValidObjectId(taskId) ? taskId : null;
+}
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
