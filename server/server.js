@@ -161,6 +161,7 @@ const limiter = rateLimit({
 });
 
 // Middleware
+app.set('trust proxy', 1); // Trust first proxy (needed for Vercel)
 app.use(helmet()); // Security headers
 app.use(compression()); // Compress responses
 app.use(morgan('combined')); // Logging
