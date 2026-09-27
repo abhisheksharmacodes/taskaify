@@ -161,12 +161,6 @@ const limiter = rateLimit({
   validate: { xForwardedForHeader: false } // Fix Vercel proxy validation error
 });
 
-// Middleware
-app.set('trust proxy', true); // Trust all proxies (safest for Vercel)
-app.use(helmet()); // Security headers
-app.use(compression()); // Compress responses
-app.use(morgan('combined')); // Logging
-app.use(limiter); // Rate limiting
 // CORS configuration with explicit allowlist and Vercel preview support
 const normalizeOrigin = (o) => (o ? String(o).replace(/\/$/, '') : o);
 const staticAllowed = [
@@ -198,8 +192,16 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
+// Middleware
+app.set('trust proxy', true); // Trust all proxies (safest for Vercel)
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+app.use(helmet()); // Security headers
+app.use(compression()); // Compress responses
+app.use(morgan('combined')); // Logging
+app.use(limiter); // Rate limiting
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
