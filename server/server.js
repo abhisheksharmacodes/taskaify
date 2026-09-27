@@ -157,11 +157,12 @@ const dbReady = connectDB();
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  message: 'Too many requests from this IP, please try again later.',
+  validate: { xForwardedForHeader: false } // Fix Vercel proxy validation error
 });
 
 // Middleware
-app.set('trust proxy', 1); // Trust first proxy (needed for Vercel)
+app.set('trust proxy', true); // Trust all proxies (safest for Vercel)
 app.use(helmet()); // Security headers
 app.use(compression()); // Compress responses
 app.use(morgan('combined')); // Logging
