@@ -187,7 +187,8 @@ const corsOptions = {
     if (staticAllowed.includes(normalized) || vercelPreviewRegex.test(normalized)) {
       return callback(null, true);
     }
-    return callback(new Error(`CORS not allowed for origin: ${origin}`));
+    console.warn(`[CORS] Rejected origin: ${origin}`);
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -200,8 +201,14 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Gate all routes on DB readiness
+// Root health & diagnostic endpoint
+app.get('/', (req, res) => {
+  res.json({ message: 'Taskaify API server is running', timestamp: new Date().toISOString() });
+});
+
+// Gate all API routes on DB readiness (bypass for OPTIONS preflight)
 app.use(async (req, res, next) => {
+  if (req.method === 'OPTIONS') return next();
   try {
     await dbReady;
     return next();
@@ -807,9 +814,7 @@ app.post('/api/generate-tasks', verifyFirebaseToken, async (req, res) => {
       : `Generate as many concise, actionable tasks as possible to learn about ${topic}. Return each task as a separate line, with no numbering, no formatting, and do NOT group multiple tasks in a single line. Each line should be a single, actionable task.`;
 
     const candidateModels = Array.from(new Set([
-      process.env.GEMINI_MODEL,
-      'gemini-1.5-flash-8b',
-      'gemini-1.5-flash',
+      'gemini-2.5-flash',
     ].filter(Boolean)));
 
     const errors = [];
