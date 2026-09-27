@@ -18,13 +18,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('Auth state changed:', firebaseUser ? 'User logged in' : 'User logged out');
       setUser(firebaseUser);
       setLoading(false);
       if (firebaseUser) {
         try {
           const t = await getIdToken(firebaseUser, true);
-          console.log('Token generated:', t ? 'Success' : 'Failed', t ? t.substring(0, 20) + '...' : 'No token');
           setToken(t);
           if (typeof window !== 'undefined') {
             localStorage.setItem('token', t);
@@ -37,7 +35,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
       } else {
-        console.log('No user, clearing token');
         setToken(null);
         if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
