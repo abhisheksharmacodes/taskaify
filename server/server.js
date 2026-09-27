@@ -408,11 +408,11 @@ app.put('/api/tasks/:id', verifyFirebaseToken, updateTaskValidation, async (req,
       { returnDocument: 'after' }
     );
     
-    if (!result.value) {
+    if (!result) {
       return res.status(404).json({ error: 'Task not found' });
     }
     
-    res.json(result.value);
+    res.json(result.value || result);
   } catch (error) {
     console.error('Error updating task:', error);
     res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
@@ -436,7 +436,7 @@ app.delete('/api/tasks/:id', verifyFirebaseToken, async (req, res) => {
       userId: user._id 
     });
     
-    if (!result.value) {
+    if (!result) {
       return res.status(404).json({ error: 'Task not found' });
     }
     
@@ -619,11 +619,11 @@ app.put('/api/tasks/:taskId/subtasks/:subtaskId', verifyFirebaseToken, updateSub
       { returnDocument: 'after' }
     );
     
-    if (!result.value) {
+    if (!result) {
       return res.status(404).json({ error: 'Subtask not found' });
     }
     
-    res.json(result.value);
+    res.json(result.value || result);
   } catch (error) {
     console.error('Error updating subtask:', error);
     res.status(500).json({ error: 'Internal server error', details: error?.message || String(error) });
@@ -661,7 +661,7 @@ app.delete('/api/tasks/:taskId/subtasks/:subtaskId', verifyFirebaseToken, async 
       taskId: taskId 
     });
     
-    if (!result.value) {
+    if (!result) {
       return res.status(404).json({ error: 'Subtask not found' });
     }
     
@@ -772,18 +772,20 @@ app.put('/api/users/profile', verifyFirebaseToken, async (req, res) => {
       { returnDocument: 'after' }
     );
     
-    if (!result.value) {
+    if (!result) {
       return res.status(404).json({ error: 'User not found' });
     }
     
     // Return updated user data without sensitive information
+    // In mongodb v6+, findOneAndUpdate returns the document directly
+    const updatedUser = result.value || result;
     const userProfile = {
-      id: result.value._id,
-      email: result.value.email,
-      name: result.value.name,
-      firebaseUid: result.value.firebaseUid,
-      createdAt: result.value.createdAt,
-      updatedAt: result.value.updatedAt
+      id: updatedUser._id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      firebaseUid: updatedUser.firebaseUid,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt
     };
     
     res.json(userProfile);
